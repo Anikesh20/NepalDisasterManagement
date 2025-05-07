@@ -3,8 +3,7 @@ export const API_CONFIG = {
     baseUrl: 'http://localhost:3000',
   },
   production: {
-    // Replace this with your actual deployed server URL
-    baseUrl: 'https://your-backend-domain.com',
+    baseUrl: 'https://nepaldisastermanagement-production.up.railway.app',
   },
 };
 
