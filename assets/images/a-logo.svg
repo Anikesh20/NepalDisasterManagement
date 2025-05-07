@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient background -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6A11CB" />
+      <stop offset="100%" stop-color="#2575FC" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.3" />
+    </filter>
+  </defs>
+  
+  <!-- Background circle with gradient -->
+  <circle cx="100" cy="100" r="90" fill="url(#bgGradient)" filter="url(#shadow)" />
+  
+  <!-- Letter A -->
+  <path d="M100 40L140 150H120L110 125H90L80 150H60L100 40Z" fill="white" />
+  
+  <!-- Crossbar of A -->
+  <rect x="85" y="100" width="30" height="10" fill="white" />
+  
+  <!-- Decorative elements -->
+  <circle cx="100" cy="100" r="75" stroke="white" stroke-width="2" stroke-opacity="0.3" fill="none" />
+  <circle cx="100" cy="100" r="60" stroke="white" stroke-width="1" stroke-opacity="0.2" fill="none" />
+</svg>
