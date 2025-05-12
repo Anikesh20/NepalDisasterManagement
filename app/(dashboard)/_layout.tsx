@@ -1,13 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, TouchableOpacity } from 'react-native';
+import { logout } from '../services/authService';
 
 export default function DashboardLayout() {
   const router = useRouter();
 
-  const handleLogout = () => {
-    // TODO: Clear user session/token
-    router.replace('/(auth)/LoginScreen');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/(auth)/LoginScreen');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   return (
@@ -32,6 +37,6 @@ export default function DashboardLayout() {
 
 const styles = StyleSheet.create({
   logoutButton: {
-    marginRight: 15,
+    padding: 8,
   },
 }); 

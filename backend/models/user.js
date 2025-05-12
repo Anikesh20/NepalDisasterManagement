@@ -146,6 +146,66 @@ class User {
             throw error;
         }
     }
+
+    static async updateProfile(userId, updateData) {
+        try {
+            console.log('Updating user profile:', { userId, updateData });
+            
+            const client = await db.pool.connect();
+            try {
+                await client.query('BEGIN');
+
+                // Build the update query dynamically based on provided fields
+                const updateFields = [];
+                const values = [];
+                let paramCount = 1;
+
+                for (const [key, value] of Object.entries(updateData)) {
+                    if (value !== undefined) {
+                        updateFields.push(`${key} = $${paramCount}`);
+                        values.push(value);
+                        paramCount++;
+                    }
+                }
+
+                if (updateFields.length === 0) {
+                    throw new Error('No fields to update');
+                }
+
+                values.push(userId);
+                const query = {
+                    text: `UPDATE users 
+                           SET ${updateFields.join(', ')}
+                           WHERE id = $${paramCount}
+                           RETURNING *`,
+                    values
+                };
+
+                console.log('Executing update query:', {
+                    ...query,
+                    values: query.values.map(v => typeof v === 'string' ? v.substring(0, 50) + '...' : v)
+                });
+
+                const result = await client.query(query);
+                await client.query('COMMIT');
+
+                if (result.rows.length === 0) {
+                    return null;
+                }
+
+                return result.rows[0];
+            } catch (error) {
+                await client.query('ROLLBACK');
+                console.error('Error in updateProfile transaction:', error);
+                throw error;
+            } finally {
+                client.release();
+            }
+        } catch (error) {
+            console.error('Error in updateProfile:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = User; 

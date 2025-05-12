@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // Update this URL to match your actual backend server
 const API_URL = 'http://10.0.2.2:3000/api/auth'; // For Android emulator
 // const API_URL = 'http://localhost:3000/api/auth'; // For iOS simulator
@@ -59,6 +61,26 @@ export const signup = async (userData: any) => {
 
 export const login = async (email: string, password: string) => {
   try {
+    // Hardcoded credentials for testing
+    if (email === 'test@gmail.com' && password === '000000') {
+      const mockUserData = {
+        user: {
+          id: 1,
+          email: 'test@gmail.com',
+          username: 'testuser',
+          full_name: 'Test User'
+        },
+        token: 'mock_token_for_testing',
+        message: 'Login successful'
+      };
+
+      // Store user ID and token in AsyncStorage
+      await AsyncStorage.setItem('userId', String(mockUserData.user.id));
+      await AsyncStorage.setItem('token', mockUserData.token);
+
+      return mockUserData;
+    }
+
     console.log('Attempting login with:', API_URL);
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
@@ -83,12 +105,26 @@ export const login = async (email: string, password: string) => {
       }
     }
 
+    // Store user ID and token in AsyncStorage
+    await AsyncStorage.setItem('userId', String(data.user.id));
+    await AsyncStorage.setItem('token', data.token);
+
     return data;
   } catch (error: any) {
     console.error('Login error:', error);
     if (error.message === 'Network request failed') {
       throw new Error('Cannot connect to server. Please check your internet connection and try again.');
     }
+    throw error;
+  }
+};
+
+export const logout = async () => {
+  try {
+    await AsyncStorage.removeItem('userId');
+    await AsyncStorage.removeItem('token');
+  } catch (error) {
+    console.error('Error during logout:', error);
     throw error;
   }
 };

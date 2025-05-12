@@ -1,22 +1,88 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { getUserProfile, updateUserProfile } from '../services/userService';
 import { colors } from '../styles/theme';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
-    fullName: 'John Doe',
-    email: 'john@example.com',
-    phone: '+977 9841234567',
-    emergencyContact: '+977 9841234568',
-    bloodGroup: 'O+',
-    district: 'Kathmandu',
-    skills: ['First Aid', 'Search & Rescue', 'Communication'],
+    fullName: '',
+    email: '',
+    phone: '',
+    emergencyContact: '',
+    bloodGroup: '',
+    district: '',
+    skills: [] as string[],
   });
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      setIsLoading(true);
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        Alert.alert('Error', 'User not found. Please login again.');
+        router.replace('/(auth)/LoginScreen');
+        return;
+      }
+
+      const userData = await getUserProfile(userId);
+      setFormData({
+        fullName: userData.full_name || '',
+        email: userData.email || '',
+        phone: userData.phone_number || '',
+        emergencyContact: userData.emergency_number || '',
+        bloodGroup: userData.blood_group || '',
+        district: userData.district || '',
+        skills: userData.skills || [],
+      });
+      setProfileImage(userData.profile_image || null);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      Alert.alert('Error', 'Failed to load profile data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        Alert.alert('Error', 'User not found. Please login again.');
+        router.replace('/(auth)/LoginScreen');
+        return;
+      }
+
+      const userData = {
+        full_name: formData.fullName,
+        phone_number: formData.phone,
+        emergency_number: formData.emergencyContact,
+        blood_group: formData.bloodGroup,
+        district: formData.district,
+        skills: formData.skills,
+        profile_image: profileImage,
+      };
+
+      await updateUserProfile(userId, userData);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -31,6 +97,14 @@ export default function ProfileScreen() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading profile...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -38,7 +112,7 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity style={styles.saveButton}>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
       </View>
@@ -71,12 +145,10 @@ export default function ProfileScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, styles.disabledInput]}
               value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
+              editable={false}
+              placeholder="Your email"
             />
           </View>
 
@@ -138,7 +210,23 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-              <TouchableOpacity style={styles.addSkillButton}>
+              <TouchableOpacity 
+                style={styles.addSkillButton}
+                onPress={() => {
+                  Alert.prompt(
+                    'Add Skill',
+                    'Enter a new skill',
+                    (skill) => {
+                      if (skill && skill.trim()) {
+                        setFormData({
+                          ...formData,
+                          skills: [...formData.skills, skill.trim()]
+                        });
+                      }
+                    }
+                  );
+                }}
+              >
                 <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                 <Text style={styles.addSkillText}>Add Skill</Text>
               </TouchableOpacity>
@@ -153,6 +241,12 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: colors.background,
   },
   header: {
@@ -235,6 +329,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     fontSize: 16,
     color: colors.text,
+  },
+  disabledInput: {
+    opacity: 0.7,
+    backgroundColor: colors.background,
   },
   skillsContainer: {
     gap: 12,
