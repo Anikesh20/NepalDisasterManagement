@@ -51,10 +51,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     opacity: 0.05,
     backgroundColor: 'transparent',
-    // Pattern created with a diagonal line pattern
-    backgroundImage: 'linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000)',
-    backgroundSize: '60px 60px',
-    backgroundPosition: '0 0, 30px 30px',
+    // Note: React Native doesn't support CSS background patterns
+    // We'll use a simple opacity overlay instead
   },
 });
 

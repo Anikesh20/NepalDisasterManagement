@@ -41,6 +41,25 @@ const SignupScreen = () => {
   const { width, height } = Dimensions.get('window');
 
   useEffect(() => {
+    // Hide navigation bar when signup screen is shown
+    const hideNavigationBar = async () => {
+      if (Platform.OS === 'android') {
+        try {
+          // Import our SystemUIManager
+          const systemUIManager = await import('../utils/systemUIManager');
+
+          // Hide navigation bar and set immersive mode
+          await systemUIManager.default.hideNavigationBar();
+          await systemUIManager.default.setImmersiveMode();
+        } catch (error) {
+          console.error('Error hiding navigation bar:', error);
+        }
+      }
+    };
+
+    hideNavigationBar();
+
+    // Get location
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {

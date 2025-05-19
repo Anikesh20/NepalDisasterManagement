@@ -6,7 +6,11 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "**/*.ts",

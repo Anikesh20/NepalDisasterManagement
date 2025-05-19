@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "nepaldisastermanagement",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -17,7 +16,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anikesh1.NepalDisasterManagement"
+      "softwareKeyboardLayoutMode": "pan",
+      "package": "com.anikesh1.NepalDisasterManagement",
+      "navigationBar": {
+        "visible": "immersive",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -29,12 +33,15 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/icon.png",
+          "imageWidth": 160,
+          "imageHeight": 160,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-system-ui",
+      "expo-navigation-bar"
     ],
     "experiments": {
       "typedRoutes": true

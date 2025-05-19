@@ -58,10 +58,12 @@ const FormInput: React.FC<FormInputProps> = ({
   // Animation values
   const focusAnim = useSharedValue(0);
 
-  // Update animation value when focus changes
-  React.useEffect(() => {
-    focusAnim.value = withTiming(isFocused ? 1 : 0, { duration: 150 });
-  }, [isFocused]);
+  // Update animation value when focus changes - without useEffect
+  if (isFocused) {
+    focusAnim.value = withTiming(1, { duration: 150 });
+  } else {
+    focusAnim.value = withTiming(0, { duration: 150 });
+  }
 
   // Animated styles
   const borderStyle = useAnimatedStyle(() => {

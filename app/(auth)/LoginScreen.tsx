@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import AnimatedView from '../components/AnimatedView';
@@ -20,6 +20,26 @@ const LoginScreen = () => {
   const [passwordError, setPasswordError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Hide navigation bar when login screen is shown
+  useEffect(() => {
+    const hideNavigationBar = async () => {
+      if (Platform.OS === 'android') {
+        try {
+          // Import our SystemUIManager
+          const systemUIManager = await import('../utils/systemUIManager');
+
+          // Hide navigation bar and set immersive mode
+          await systemUIManager.default.hideNavigationBar();
+          await systemUIManager.default.setImmersiveMode();
+        } catch (error) {
+          console.error('Error hiding navigation bar:', error);
+        }
+      }
+    };
+
+    hideNavigationBar();
+  }, []);
 
   const { width, height } = Dimensions.get('window');
 
@@ -56,13 +76,38 @@ const LoginScreen = () => {
     setIsLoading(true);
 
     try {
+      // Check if admin credentials were entered
+      if (email === 'admin@gmail.com' && password === '000000') {
+        // Import the auth state utility
+        const { saveAdminAuthState } = await import('../utils/authState');
+
+        // Save admin authentication state
+        await saveAdminAuthState();
+
+        // Success haptic feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // Navigate to admin dashboard
+        router.replace('/(admin)');
+        return;
+      }
+
+      // Regular user login
       const response = await login(email, password);
+
+      // Import the auth state utility
+      const { saveUserAuthState } = await import('../utils/authState');
+
+      // Save user authentication state
+      await saveUserAuthState(
+        response.user.id.toString(),
+        response.token
+      );
 
       // Success haptic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // Store user data and token if needed
-      // For now, just navigate to dashboard
+      // Navigate to dashboard
       router.replace('/(dashboard)');
     } catch (error: any) {
       console.error('Login error:', error);
@@ -206,6 +251,8 @@ const LoginScreen = () => {
                 </TouchableOpacity>
               </View>
             </AnimatedView>
+
+
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -320,6 +367,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 5,
   },
+
 });
 
 export default LoginScreen;

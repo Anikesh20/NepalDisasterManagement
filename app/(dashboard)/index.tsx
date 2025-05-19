@@ -1,13 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import {
+  Alert,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import Animated, { FadeInDown, FadeInUp, SlideInRight } from 'react-native-reanimated';
+import ALogoHeader from '../components/ALogoHeader';
+import DisasterCard from '../components/DisasterCard';
+import DonationCard from '../components/DonationCard';
+import DonationSuccessModal from '../components/DonationSuccessModal';
 import WeatherModal from '../components/WeatherModal';
-import { colors } from '../styles/theme';
+import disasterService, { DisasterData } from '../services/disasterService';
+import donationService from '../services/donationService';
+import { colors, shadows } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -20,6 +36,11 @@ export default function DashboardScreen() {
   const [activeDisasters, setActiveDisasters] = useState<DisasterData[]>([]);
   const [loadingDisasters, setLoadingDisasters] = useState(true);
   const [disasterError, setDisasterError] = useState<string | null>(null);
+
+  // Donation state
+  const [donationSuccessVisible, setDonationSuccessVisible] = useState(false);
+  const [donationAmount, setDonationAmount] = useState(0);
+  const [transactionId, setTransactionId] = useState('');
 
   const requestLocationPermission = async () => {
     try {
@@ -78,6 +99,32 @@ export default function DashboardScreen() {
     }
   };
 
+  const handleDonation = async (amount: number) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // Show loading or processing state here if needed
+
+      // Process the donation
+      const response = await donationService.makeDonation(amount);
+
+      if (response.success) {
+        // Set the donation details for the success modal
+        setDonationAmount(amount);
+        setTransactionId(response.transactionId || '');
+
+        // Show the success modal
+        setDonationSuccessVisible(true);
+      } else {
+        // Handle failed donation
+        Alert.alert('Donation Failed', response.message);
+      }
+    } catch (error) {
+      console.error('Error processing donation:', error);
+      Alert.alert('Error', 'An error occurred while processing your donation. Please try again.');
+    }
+  };
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -99,10 +146,16 @@ export default function DashboardScreen() {
       onPress: () => router.push('/(dashboard)/emergency-contacts'),
     },
     {
-      title: 'Volunteer Status',
-      icon: 'people-outline' as const,
+      title: 'Disaster Map',
+      icon: 'map-outline' as const,
       color: '#3498DB',
-      onPress: () => router.push('/(dashboard)/volunteer-status'),
+      onPress: () => router.push('/(dashboard)/disaster-map'),
+    },
+    {
+      title: 'Report Disaster',
+      icon: 'warning-outline' as const,
+      color: '#E74C3C',
+      onPress: () => router.push('/(dashboard)/report-disaster'),
     },
     {
       title: 'Disaster Alerts',
@@ -111,10 +164,28 @@ export default function DashboardScreen() {
       onPress: () => router.push('/(dashboard)/alerts'),
     },
     {
+      title: 'Historical Data',
+      icon: 'bar-chart-outline' as const,
+      color: '#9B59B6',
+      onPress: () => router.push('/(dashboard)/historical-data'),
+    },
+    {
+      title: 'My Reports',
+      icon: 'document-text-outline' as const,
+      color: '#1ABC9C',
+      onPress: () => router.push('/(dashboard)/my-reports'),
+    },
+    {
       title: 'Weather',
       icon: 'partly-sunny-outline' as const,
       color: '#2ECC71',
       onPress: handleWeatherPress,
+    },
+    {
+      title: 'Volunteer Status',
+      icon: 'people-outline' as const,
+      color: '#34495E',
+      onPress: () => router.push('/(dashboard)/volunteer-status'),
     },
   ];
 
@@ -144,7 +215,7 @@ export default function DashboardScreen() {
     if (loadingDisasters) {
       return (
         <View style={styles.disasterLoadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
+          <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary }} />
           <Text style={styles.disasterLoadingText}>Loading disaster information...</Text>
         </View>
       );
@@ -188,91 +259,162 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={[colors.primary, colors.primaryDark]}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.welcomeText}>Welcome back!</Text>
-              <Text style={styles.subtitle}>Stay safe, stay prepared</Text>
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.headerTop}>
+              <ALogoHeader size="medium" />
+              <View style={styles.welcomeTextContainer}>
+                <Text style={styles.welcomeText}>Welcome back!</Text>
+                <Text style={styles.subtitle}>Stay safe, stay prepared</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.profileButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('/(dashboard)/profile');
+                }}
+              >
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.profileButtonImage} />
+                ) : (
+                  <View style={styles.profileButtonPlaceholder}>
+                    <Ionicons name="person" size={24} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={() => router.push('/(dashboard)/profile')}
-            >
-              {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.profileButtonImage} />
-              ) : (
-                <View style={styles.profileButtonPlaceholder}>
-                  <Ionicons name="person-circle-outline" size={32} color="#fff" />
-                </View>
-              )}
-            </TouchableOpacity>
           </View>
+        </LinearGradient>
+        <View style={styles.headerWave}>
+          <View style={styles.wave} />
         </View>
-      </LinearGradient>
+      </View>
 
       <View style={styles.content}>
-        <View style={styles.quickActionsContainer}>
+        <View style={styles.quickActionsHeader}>
+          <Text style={styles.sectionHeader}>Quick Actions</Text>
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/(dashboard)/all-actions');
+            }}
+          >
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickActionsScrollContainer}
+        >
           {quickActions.map((action, index) => (
             <Animated.View
               key={index}
-              entering={FadeInDown.delay(index * 100)}
+              entering={FadeInDown.delay(index * 70).duration(400)}
             >
               <TouchableOpacity
-                style={[styles.actionCard, { backgroundColor: action.color + '15' }]}
-                onPress={action.onPress}
+                style={styles.actionCard}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  action.onPress();
+                }}
+                activeOpacity={0.7}
               >
-                <View style={[styles.actionIconContainer, { backgroundColor: action.color + '30' }]}>
-                  <Ionicons name={action.icon} size={24} color={action.color} />
+                <View style={[styles.actionIconFloating, { backgroundColor: action.color }]}>
+                  <Ionicons name={action.icon} size={26} color="#fff" />
                 </View>
                 <Text style={[styles.actionText, { color: action.color }]}>{action.title}</Text>
               </TouchableOpacity>
             </Animated.View>
           ))}
-        </View>
+        </ScrollView>
 
-        <View style={styles.disastersSection}>
+        <Animated.View
+          style={styles.cardSection}
+          entering={FadeInUp.delay(300).duration(500)}
+        >
           <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>Active Disasters</Text>
-            <TouchableOpacity onPress={() => router.push('/(dashboard)/alerts')}>
+            <View style={styles.sectionTitleWrapper}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.danger }]}>
+                <Ionicons name="warning" size={18} color="#fff" />
+              </View>
+              <Text style={styles.sectionTitle}>Active Disasters</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.seeAllButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(dashboard)/alerts');
+              }}
+            >
               <Text style={styles.seeAllText}>See All</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </TouchableOpacity>
           </View>
           {renderDisastersSection()}
-        </View>
+        </Animated.View>
 
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Your Status</Text>
+        <Animated.View
+          style={styles.cardSection}
+          entering={FadeInUp.delay(400).duration(500)}
+        >
+          <View style={styles.sectionTitleContainer}>
+            <View style={styles.sectionTitleWrapper}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.secondary }]}>
+                <Ionicons name="stats-chart" size={18} color="#fff" />
+              </View>
+              <Text style={styles.sectionTitle}>Your Status</Text>
+            </View>
+          </View>
           <View style={styles.statsContainer}>
             {stats.map((stat, index) => (
               <Animated.View
                 key={index}
-                entering={FadeInDown.delay(400 + index * 100)}
+                entering={FadeInDown.delay(500 + index * 100)}
                 style={styles.statCard}
               >
-                <View style={[styles.statIconContainer, { backgroundColor: stat.color + '20' }]}>
-                  <Ionicons name={stat.icon} size={24} color={stat.color} />
+                <View style={[styles.statIconFloating, { backgroundColor: stat.color }]}>
+                  <Ionicons name={stat.icon} size={26} color="#fff" />
                 </View>
                 <Text style={styles.statValue}>{stat.value}</Text>
                 <Text style={styles.statLabel}>{stat.label}</Text>
               </Animated.View>
             ))}
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.newsSection}>
-          <Text style={styles.sectionTitle}>Latest Updates</Text>
+        <Animated.View
+          style={styles.cardSection}
+          entering={FadeInUp.delay(500).duration(500)}
+        >
+          <View style={styles.sectionTitleContainer}>
+            <View style={styles.sectionTitleWrapper}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
+                <Ionicons name="newspaper" size={18} color="#fff" />
+              </View>
+              <Text style={styles.sectionTitle}>Latest Updates</Text>
+            </View>
+          </View>
           {newsItems.map((item, index) => (
             <Animated.View
               key={index}
-              entering={FadeInDown.delay(700 + index * 100)}
+              entering={SlideInRight.delay(600 + index * 100).duration(400)}
             >
-              <TouchableOpacity style={styles.newsCard}>
-                <View style={styles.newsIconContainer}>
-                  <Ionicons name={item.icon} size={24} color={colors.primary} />
+              <TouchableOpacity
+                style={styles.newsCard}
+                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.newsIconFloating, { backgroundColor: colors.primary }]}>
+                  <Ionicons name={item.icon} size={24} color="#fff" />
                 </View>
                 <View style={styles.newsContent}>
                   <Text style={styles.newsTitle}>{item.title}</Text>
@@ -281,31 +423,21 @@ export default function DashboardScreen() {
                     <Text style={styles.newsDate}>{item.date}</Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+                <View style={styles.newsArrow}>
+                  <Ionicons name="chevron-forward" size={20} color="#fff" />
+                </View>
               </TouchableOpacity>
             </Animated.View>
           ))}
-        </View>
+        </Animated.View>
 
-        <View style={styles.mapSection}>
-          <Text style={styles.sectionTitle}>Nearby Resources</Text>
-          <TouchableOpacity style={styles.mapCard}>
-            <Image
-              source={require('../../assets/images/splash-icon.png')}
-              style={styles.mapImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.mapOverlay}
-            >
-              <View style={styles.mapContent}>
-                <Text style={styles.mapText}>View Nearby Shelters & Resources</Text>
-                <Ionicons name="map-outline" size={24} color="#fff" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        <Animated.View
+          entering={FadeInUp.delay(600).duration(500)}
+        >
+          <DonationCard onDonate={handleDonation} />
+        </Animated.View>
+
+        {/* Nearby Resources section removed as requested */}
       </View>
 
       <WeatherModal
@@ -315,6 +447,13 @@ export default function DashboardScreen() {
         onRequestPermission={requestLocationPermission}
         hasPermission={locationPermission}
       />
+
+      <DonationSuccessModal
+        visible={donationSuccessVisible}
+        amount={donationAmount}
+        transactionId={transactionId}
+        onClose={() => setDonationSuccessVisible(false)}
+      />
     </ScrollView>
   );
 }
@@ -322,86 +461,151 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f8f9fa',
+  },
+  // Header styles
+  headerContainer: {
+    position: 'relative',
+    marginBottom: 15,
+    ...shadows.medium,
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 50,
+    paddingBottom: 60,
     paddingHorizontal: 20,
   },
+  headerWave: {
+    height: 40,
+    overflow: 'hidden',
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+  },
+  wave: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -25,
+    height: 60,
+    backgroundColor: '#f8f9fa',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+  },
   headerContent: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  welcomeTextContainer: {
+    flex: 1,
+    marginLeft: 15,
+  },
   welcomeText: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 5,
   },
   profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...shadows.small,
   },
   profileButtonImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 15,
   },
   profileButtonPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Content styles
   content: {
     padding: 20,
   },
-  quickActionsContainer: {
+  sectionHeader: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 15,
+  },
+  // Quick actions styles
+  quickActionsHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 25,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  viewAllButton: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  viewAllText: {
+    fontSize: 12,
+    color: colors.textLight,
+    fontWeight: '600',
+  },
+  quickActionsScrollContainer: {
+    paddingRight: 20,
+    paddingBottom: 10,
   },
   actionCard: {
-    width: width / 2 - 30,
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 15,
-    flexDirection: 'row',
+    width: 110,
+    height: 110,
+    padding: 12,
+    marginRight: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-  actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  actionIconFloating: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginBottom: 12,
+    ...shadows.medium,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   actionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
-  // Disaster section styles
-  disastersSection: {
-    marginBottom: 25,
+  // Section common styles
+  cardSection: {
+    marginBottom: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 24,
+    padding: 18,
+    ...shadows.medium,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   sectionTitleContainer: {
     flexDirection: 'row',
@@ -409,20 +613,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
+  sectionTitleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    ...shadows.small,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '10',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
   seeAllText: {
     fontSize: 14,
     color: colors.primary,
     fontWeight: '600',
+    marginRight: 4,
   },
+  // Disaster section styles
   disasterCardsContainer: {
-    paddingRight: 20,
+    paddingRight: 5,
   },
   disasterLoadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: 16,
     ...shadows.small,
   },
@@ -460,98 +696,105 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   // Stats section styles
-  statsSection: {
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 15,
-  },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 15,
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.card,
     padding: 15,
-    borderRadius: 20,
     marginHorizontal: 5,
     alignItems: 'center',
-    ...shadows.small,
+    backgroundColor: 'transparent',
   },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  statIconFloating: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+    ...shadows.medium,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: 5,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.textLight,
     textAlign: 'center',
   },
-  newsSection: {
-    marginBottom: 25,
-  },
+  // News section styles
   newsCard: {
-    backgroundColor: colors.card,
-    padding: 15,
-    borderRadius: 20,
-    marginBottom: 10,
+    padding: 12,
+    marginBottom: 16,
+    marginTop: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    ...shadows.small,
+    position: 'relative',
+    backgroundColor: 'transparent',
   },
-  newsIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary + '20',
+  newsIconFloating: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    ...shadows.medium,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   newsContent: {
     flex: 1,
   },
   newsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 5,
+    marginBottom: 6,
   },
   newsMeta: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   newsSource: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.primary,
     marginRight: 10,
+    fontWeight: '600',
   },
   newsDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textLight,
+    fontWeight: '500',
   },
-  mapSection: {
-    marginBottom: 25,
+  newsArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.medium,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
+  // Map section styles
   mapCard: {
     height: 200,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
+    marginTop: 10,
+    ...shadows.medium,
   },
   mapImage: {
     width: '100%',
@@ -571,7 +814,41 @@ const styles = StyleSheet.create({
   },
   mapText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
+  mapSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    marginTop: 5,
+  },
+  mapIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapBadge: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...shadows.small,
+  },
+  mapBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 5,
+  }
 });

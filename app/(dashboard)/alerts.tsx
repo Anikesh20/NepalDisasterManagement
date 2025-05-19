@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DisasterCard from '../components/DisasterCard';
 import disasterService, { DisasterData, DisasterType } from '../services/disasterService';
 import { colors, shadows } from '../styles/theme';
@@ -68,7 +68,7 @@ export default function AlertsScreen() {
     if (loading) {
       return (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary }} />
           <Text style={styles.emptyText}>Loading disaster information...</Text>
         </View>
       );

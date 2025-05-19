@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -22,6 +23,7 @@ export default function ProfileScreen() {
   });
 
   useEffect(() => {
+    // Fetch user profile on component mount
     fetchUserProfile();
   }, []);
 
@@ -57,6 +59,9 @@ export default function ProfileScreen() {
   const handleSave = async () => {
     try {
       setIsLoading(true);
+      // Haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
       const userId = await AsyncStorage.getItem('userId');
       if (!userId) {
         Alert.alert('Error', 'User not found. Please login again.');
@@ -75,9 +80,15 @@ export default function ProfileScreen() {
       };
 
       await updateUserProfile(userId, userData);
+
+      // Success haptic feedback
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
+
+      // Error haptic feedback
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -210,7 +221,7 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.addSkillButton}
                 onPress={() => {
                   Alert.prompt(
@@ -372,4 +383,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
   },
-}); 
+});

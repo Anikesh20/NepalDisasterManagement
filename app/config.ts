@@ -11,4 +11,12 @@ export const API_CONFIG = {
 const ENV = process.env.NODE_ENV || 'development';
 
 // Export the current configuration
-export const API_URL = API_CONFIG[ENV].baseUrl; 
+export const API_URL = API_CONFIG[ENV].baseUrl;
+
+// Add a default export to satisfy expo-router
+const config = {
+  API_CONFIG,
+  API_URL
+};
+
+export default config;

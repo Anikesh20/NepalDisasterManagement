@@ -2,9 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { DisasterData, getDisasterColor, getDisasterIcon, getSeverityColor } from '../services/disasterService';
-import disasterService from '../services/disasterService';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import disasterService, { DisasterData, getDisasterColor, getDisasterIcon, getSeverityColor } from '../services/disasterService';
 import { colors, shadows } from '../styles/theme';
 
 export default function DisasterDetailsScreen() {
@@ -19,13 +18,13 @@ export default function DisasterDetailsScreen() {
       try {
         setLoading(true);
         setError(null);
-        
+
         if (!id) {
           setError('No disaster ID provided');
           setLoading(false);
           return;
         }
-        
+
         const data = await disasterService.getDisasterById(id);
         if (!data) {
           setError('Disaster not found');
@@ -58,7 +57,7 @@ export default function DisasterDetailsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary }} />
         <Text style={styles.loadingText}>Loading disaster details...</Text>
       </View>
     );
@@ -158,7 +157,7 @@ export default function DisasterDetailsScreen() {
                 <Text style={styles.statLabel}>Casualties</Text>
               </View>
             )}
-            
+
             {disaster.evacuees !== undefined && (
               <View style={[styles.statCard, shadows.small]}>
                 <View style={[styles.statIconContainer, { backgroundColor: colors.warning + '20' }]}>
@@ -168,7 +167,7 @@ export default function DisasterDetailsScreen() {
                 <Text style={styles.statLabel}>Evacuees</Text>
               </View>
             )}
-            
+
             <View style={[styles.statCard, shadows.small]}>
               <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '20' }]}>
                 <Ionicons name="alert-outline" size={24} color={colors.primary} />
@@ -185,15 +184,15 @@ export default function DisasterDetailsScreen() {
         </View>
 
         <View style={styles.actionsSection}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.primary }]}
             onPress={() => router.push('/(dashboard)/emergency-contacts')}
           >
             <Ionicons name="call-outline" size={20} color="#fff" />
             <Text style={styles.actionButtonText}>Emergency Contacts</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.secondary }]}
             onPress={() => router.push('/(dashboard)/volunteer-status')}
           >
