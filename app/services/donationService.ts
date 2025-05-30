@@ -1,12 +1,17 @@
 // Mock donation service for demonstration purposes
 // In a real app, this would connect to a payment gateway and backend API
 
+import { API_BASE_URL } from '../config/api';
+import authService from './authService';
+import notificationService from './notificationService';
+
 export interface DonationResponse {
   success: boolean;
   transactionId?: string;
   message: string;
   amount?: number;
   timestamp?: string;
+  notificationSent?: boolean;
 }
 
 export interface DonationHistory {
@@ -36,57 +41,115 @@ const mockDonationHistory: DonationHistory[] = [
 ];
 
 class DonationService {
-  // Process a donation (mock implementation)
+  // Process a donation
   async makeDonation(amount: number): Promise<DonationResponse> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Simulate successful donation (in a real app, this would call a payment gateway)
-    if (amount > 0) {
-      const transactionId = 'txn-' + Math.random().toString(36).substring(2, 10);
-      
-      // Add to mock history
-      mockDonationHistory.unshift({
-        id: 'don-' + Math.random().toString(36).substring(2, 7),
-        amount: amount,
-        date: new Date().toISOString().split('T')[0],
-        status: 'completed',
-        campaign: 'Disaster Relief Fund'
+    try {
+      // Get current user info
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create payment intent
+      const createIntentResponse = await fetch(`${API_BASE_URL}/api/payments/create-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await authService.getToken()}`
+        },
+        body: JSON.stringify({ amount: amount * 100 }) // Convert to paisa
       });
+
+      if (!createIntentResponse.ok) {
+        throw new Error('Failed to create payment intent');
+      }
+
+      const { clientSecret, paymentIntentId } = await createIntentResponse.json();
+
+      // Confirm payment
+      const confirmResponse = await fetch(`${API_BASE_URL}/api/payments/confirm-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await authService.getToken()}`
+        },
+        body: JSON.stringify({ 
+          paymentIntentId,
+          phoneNumber: currentUser.phoneNumber // Include phone number for SMS
+        })
+      });
+
+      if (!confirmResponse.ok) {
+        throw new Error('Payment confirmation failed');
+      }
+
+      const paymentResult = await confirmResponse.json();
       
-      return {
-        success: true,
-        transactionId,
-        message: 'Donation successful',
-        amount,
-        timestamp: new Date().toISOString()
-      };
-    } else {
+      if (paymentResult.success) {
+        const donationResponse: DonationResponse = {
+          success: true,
+          transactionId: paymentIntentId,
+          message: 'Donation successful',
+          amount,
+          timestamp: new Date().toISOString(),
+          notificationSent: paymentResult.notificationSent
+        };
+
+        // Send additional confirmations if needed
+        await notificationService.sendDonationConfirmation(
+          currentUser.id,
+          currentUser.email,
+          currentUser.phoneNumber,
+          donationResponse
+        );
+
+        return donationResponse;
+      } else {
+        throw new Error(paymentResult.error || 'Payment failed');
+      }
+    } catch (error) {
+      console.error('Donation error:', error);
       return {
         success: false,
-        message: 'Invalid donation amount'
+        message: error instanceof Error ? error.message : 'Donation failed'
       };
     }
   }
 
   // Get donation history for the current user
   async getDonationHistory(): Promise<DonationHistory[]> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Return mock donation history
-    return [...mockDonationHistory];
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/payments/history`, {
+        headers: {
+          'Authorization': `Bearer ${await authService.getToken()}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch donation history');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching donation history:', error);
+      return [];
+    }
   }
 
   // Get total amount donated by the user
   async getTotalDonated(): Promise<number> {
-    const history = await this.getDonationHistory();
-    return history.reduce((total, donation) => {
-      if (donation.status === 'completed') {
-        return total + donation.amount;
-      }
-      return total;
-    }, 0);
+    try {
+      const history = await this.getDonationHistory();
+      return history.reduce((total, donation) => {
+        if (donation.status === 'completed') {
+          return total + donation.amount;
+        }
+        return total;
+      }, 0);
+    } catch (error) {
+      console.error('Error calculating total donations:', error);
+      return 0;
+    }
   }
 }
 

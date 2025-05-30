@@ -1,7 +1,6 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import { DisasterData } from './disasterService';
-import disasterService from './disasterService';
+import disasterService, { DisasterData } from './disasterService';
 
 // Define task names
 const BACKGROUND_FETCH_TASK = 'background-fetch-disasters';

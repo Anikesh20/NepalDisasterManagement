@@ -1,7 +1,20 @@
+import * as Notifications from 'expo-notifications';
 import { DisasterData, DisasterType, SeverityLevel } from './disasterService';
+import { DonationResponse } from './donationService';
+import emailService from './emailService';
+import smsService from './smsService';
 
 // Mock notification service for development
 console.log('Using mock notification service - notifications disabled');
+
+// Configure notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 /**
  * Register for push notifications (mock)
@@ -139,15 +152,94 @@ export const cancelAllNotifications = async () => {
   console.log('Mock: cancelAllNotifications called');
 };
 
-const notificationService = {
-  registerForPushNotifications,
-  sendDisasterNotification,
-  notifyNewDisaster,
-  notifyDisasterUpdate,
-  addNotificationResponseHandler,
-  addNotificationReceivedHandler,
-  getAllScheduledNotifications,
-  cancelAllNotifications,
-};
+class NotificationService {
+  // Send donation confirmation via email
+  async sendEmailConfirmation(email: string, donationDetails: DonationResponse) {
+    return emailService.sendDonationConfirmation(email, donationDetails);
+  }
 
-export default notificationService;
+  // Send donation confirmation via SMS
+  async sendSMSConfirmation(phoneNumber: string, donationDetails: DonationResponse) {
+    return smsService.sendDonationConfirmation(phoneNumber, donationDetails);
+  }
+
+  // Send push notification for donation confirmation
+  async sendPushNotification(userId: string, donationDetails: DonationResponse) {
+    try {
+      // In a real app, this would call your backend API to send the push notification
+      // For now, we'll use local notifications as a fallback
+      const formattedAmount = new Intl.NumberFormat('en-NP', {
+        style: 'currency',
+        currency: 'NPR',
+        minimumFractionDigits: 0,
+      }).format(donationDetails.amount || 0);
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Donation Successful!',
+          body: `Thank you for your donation of ${formattedAmount}. Transaction ID: ${donationDetails.transactionId}`,
+          data: { donationDetails },
+        },
+        trigger: null, // Show immediately
+      });
+
+      return {
+        success: true,
+        message: 'Push notification sent successfully',
+      };
+    } catch (error) {
+      console.error('Error sending push notification:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to send push notification',
+      };
+    }
+  }
+
+  // Send donation confirmation through all available channels
+  async sendDonationConfirmation(
+    userId: string,
+    email: string | null,
+    phoneNumber: string | null,
+    donationDetails: DonationResponse
+  ) {
+    const results = {
+      email: false,
+      sms: false,
+      push: false,
+    };
+
+    try {
+      // Send push notification
+      const pushResult = await this.sendPushNotification(userId, donationDetails);
+      results.push = pushResult.success;
+
+      // Send email if available
+      if (email) {
+        const emailResult = await this.sendEmailConfirmation(email, donationDetails);
+        results.email = emailResult.success;
+      }
+
+      // Send SMS if available
+      if (phoneNumber) {
+        const smsResult = await this.sendSMSConfirmation(phoneNumber, donationDetails);
+        results.sms = smsResult.success;
+      }
+
+      return {
+        success: true,
+        results,
+        message: 'Donation confirmation sent through available channels',
+      };
+    } catch (error) {
+      console.error('Error sending donation confirmation:', error);
+      return {
+        success: false,
+        results,
+        message: error instanceof Error ? error.message : 'Failed to send donation confirmation',
+      };
+    }
+  }
+}
+
+export default new NotificationService();

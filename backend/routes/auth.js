@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+require('dotenv').config();
 
 // Signup route
 router.post('/signup', async (req, res) => {
@@ -115,7 +116,7 @@ router.post('/login', async (req, res) => {
         // Generate JWT token
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            'your_jwt_secret_key_here',
+            'nepal_disaster_management_secret_key_2024',
             { expiresIn: '24h' }
         );
 

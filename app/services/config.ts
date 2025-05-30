@@ -5,7 +5,9 @@ export const API_URL = 'http://10.0.2.2:3000/api'; // For Android emulator
 
 // Add a default export to satisfy expo-router
 const config = {
-  API_URL
+  API_URL,
+  // Add other config values here
+  STRIPE_PUBLISHABLE_KEY: 'pk_test_51RH1RtLnm2eBVvTqnVeoBJepGyBj8cS0kFdlFgzwwcT66NRtDpyywesUqWZv08tfQQw3KlWPnqvrtBeq89ok5jXy00kkZ0iHlS'
 };
 
 export default config;

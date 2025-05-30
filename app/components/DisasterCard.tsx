@@ -44,27 +44,50 @@ export default function DisasterCard({ disaster, compact = false }: DisasterCard
       <TouchableOpacity 
         style={[
           styles.compactCard, 
-          { borderLeftColor: getDisasterColor(disaster.type) },
-          shadows.small
+          { borderLeftColor: getDisasterColor(disaster.type) }
         ]}
         onPress={handlePress}
+        activeOpacity={0.7}
       >
-        <View style={[styles.iconContainer, { backgroundColor: getDisasterColor(disaster.type) + '20' }]}>
-          <Ionicons name={getDisasterIcon(disaster.type)} size={24} color={getDisasterColor(disaster.type)} />
-        </View>
-        <View style={styles.compactContent}>
-          <Text style={styles.compactTitle} numberOfLines={1}>{disaster.title}</Text>
-          <View style={styles.compactMeta}>
-            <Text style={styles.location} numberOfLines={1}>{disaster.location}</Text>
-            <View style={styles.timeContainer}>
-              <Ionicons name="time-outline" size={12} color={colors.textLight} style={styles.timeIcon} />
-              <Text style={styles.time}>{formatTime(disaster.timestamp)}</Text>
-            </View>
+        <View style={styles.compactCardContent}>
+          <View style={[styles.iconContainer, { backgroundColor: getDisasterColor(disaster.type) + '15' }]}>
+            <Ionicons name={getDisasterIcon(disaster.type)} size={28} color={getDisasterColor(disaster.type)} />
           </View>
-          <View style={[styles.severityBadge, { backgroundColor: getSeverityColor(disaster.severity) + '20' }]}>
-            <Text style={[styles.severityText, { color: getSeverityColor(disaster.severity) }]}>
-              {disaster.severity.toUpperCase()}
-            </Text>
+          <View style={styles.compactContent}>
+            <View style={styles.compactHeader}>
+              <Text style={styles.compactTitle} numberOfLines={1}>{disaster.title}</Text>
+              <View style={[styles.severityBadge, { backgroundColor: getSeverityColor(disaster.severity) + '15' }]}>
+                <Text style={[styles.severityText, { color: getSeverityColor(disaster.severity) }]}>
+                  {disaster.severity.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.compactMeta}>
+              <View style={styles.locationContainer}>
+                <Ionicons name="location-outline" size={14} color={colors.textLight} style={styles.metaIcon} />
+                <Text style={styles.location} numberOfLines={1}>{disaster.location}</Text>
+              </View>
+              <View style={styles.timeContainer}>
+                <Ionicons name="time-outline" size={14} color={colors.textLight} style={styles.metaIcon} />
+                <Text style={styles.time}>{formatTime(disaster.timestamp)}</Text>
+              </View>
+            </View>
+            {(disaster.casualties !== undefined || disaster.evacuees !== undefined) && (
+              <View style={styles.compactStats}>
+                {disaster.casualties !== undefined && (
+                  <View style={styles.compactStat}>
+                    <Ionicons name="sad-outline" size={14} color={colors.danger} style={styles.metaIcon} />
+                    <Text style={[styles.compactStatText, { color: colors.danger }]}>{disaster.casualties}</Text>
+                  </View>
+                )}
+                {disaster.evacuees !== undefined && (
+                  <View style={styles.compactStat}>
+                    <Ionicons name="people-outline" size={14} color={colors.warning} style={styles.metaIcon} />
+                    <Text style={[styles.compactStatText, { color: colors.warning }]}>{disaster.evacuees}</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -130,24 +153,86 @@ export default function DisasterCard({ disaster, compact = false }: DisasterCard
 const styles = StyleSheet.create({
   // Compact card styles (for dashboard)
   compactCard: {
-    width: 200,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    marginRight: 12,
+    width: 280,
+    backgroundColor: 'transparent',
+    borderRadius: 20,
+    marginRight: 16,
     overflow: 'hidden',
     borderLeftWidth: 4,
   },
+  compactCardContent: {
+    flexDirection: 'row',
+    padding: 16,
+  },
   compactContent: {
-    padding: 12,
+    flex: 1,
+    marginLeft: 12,
+  },
+  compactHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   compactTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
   },
   compactMeta: {
     marginBottom: 8,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  metaIcon: {
+    marginRight: 4,
+  },
+  location: {
+    fontSize: 13,
+    color: colors.textLight,
+    flex: 1,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  time: {
+    fontSize: 13,
+    color: colors.textLight,
+  },
+  compactStats: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  compactStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  compactStatText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  severityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  severityText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   
   // Full card styles (for alerts screen)
@@ -167,13 +252,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   title: {
     fontSize: 16,
     fontWeight: '600',
@@ -183,31 +261,8 @@ const styles = StyleSheet.create({
   meta: {
     flexDirection: 'column',
   },
-  location: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
   timeIcon: {
     marginRight: 4,
-  },
-  time: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  severityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  severityText: {
-    fontSize: 10,
-    fontWeight: '600',
   },
   cardBody: {
     padding: 16,

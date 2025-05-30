@@ -5,6 +5,19 @@ const API_URL = 'http://10.0.2.2:3000/api/auth'; // For Android emulator
 // const API_URL = 'http://localhost:3000/api/auth'; // For iOS simulator
 // const API_URL = 'http://YOUR_ACTUAL_IP:3000/api/auth'; // For physical device
 
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  full_name: string;
+  phone_number?: string;
+  emergency_number?: string;
+  district?: string;
+  current_location?: string;
+  blood_group?: string;
+  is_volunteer?: boolean;
+}
+
 export const signup = async (userData: any) => {
   try {
     // Transform the data to match backend expectations
@@ -63,21 +76,28 @@ export const login = async (email: string, password: string) => {
   try {
     // Hardcoded credentials for testing
     if (email === 'test@gmail.com' && password === '000000') {
+      console.log('Auth Debug - Using test credentials');
       const mockUserData = {
         user: {
           id: 1,
           email: 'test@gmail.com',
           username: 'testuser',
-          full_name: 'Test User'
+          full_name: 'Test User',
+          phone_number: '9860651033',
+          district: 'Kathmandu',
+          is_volunteer: false
         },
         token: 'mock_token_for_testing',
         message: 'Login successful'
       };
 
-      // Store user ID and token in AsyncStorage
+      console.log('Auth Debug - Storing test user data');
+      // Store user data in AsyncStorage
       await AsyncStorage.setItem('userId', String(mockUserData.user.id));
       await AsyncStorage.setItem('token', mockUserData.token);
+      await AsyncStorage.setItem('userData', JSON.stringify(mockUserData.user));
 
+      console.log('Auth Debug - Test user data stored');
       return mockUserData;
     }
 
@@ -105,10 +125,13 @@ export const login = async (email: string, password: string) => {
       }
     }
 
-    // Store user ID and token in AsyncStorage
+    console.log('Auth Debug - Storing user data from backend');
+    // Store user data in AsyncStorage
     await AsyncStorage.setItem('userId', String(data.user.id));
     await AsyncStorage.setItem('token', data.token);
+    await AsyncStorage.setItem('userData', JSON.stringify(data.user));
 
+    console.log('Auth Debug - User data stored successfully');
     return data;
   } catch (error: any) {
     console.error('Login error:', error);
@@ -129,8 +152,68 @@ export const logout = async () => {
   }
 };
 
+export const getCurrentUser = async (): Promise<User | null> => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    const token = await AsyncStorage.getItem('token');
+    
+    console.log('Auth Debug - Stored User ID:', userId);
+    console.log('Auth Debug - Token exists:', !!token);
+    
+    if (!userId || !token) {
+      console.log('Auth Debug - No user ID or token found');
+      return null;
+    }
+
+    // For testing, return mock user data
+    if (userId === '1') {
+      console.log('Auth Debug - Using mock user data for test user');
+      const mockUser = {
+        id: 1,
+        email: 'test@gmail.com',
+        username: 'testuser',
+        full_name: 'Test User',
+        phone_number: '9860651033',
+        district: 'Kathmandu',
+        is_volunteer: false
+      };
+      console.log('Auth Debug - Mock user data:', mockUser);
+      return mockUser;
+    }
+
+    console.log('Auth Debug - Fetching user data from backend for ID:', userId);
+    // In a real app, fetch user data from the backend
+    const response = await fetch(`${API_URL}/users/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.log('Auth Debug - Failed to fetch user data:', response.status);
+      throw new Error('Failed to fetch user data');
+    }
+
+    const userData = await response.json();
+    console.log('Auth Debug - User data from backend:', userData);
+    return userData;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
+  }
+};
+
+export const getToken = async (): Promise<string | null> => {
+  return AsyncStorage.getItem('token');
+};
+
 const authService = {
   signup,
+  login,
+  logout,
+  getCurrentUser,
+  getToken
 };
 
 export default authService; 

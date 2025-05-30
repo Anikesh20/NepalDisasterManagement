@@ -1,9 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, {
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming
+} from 'react-native-reanimated';
 import AnimatedView from '../components/AnimatedView';
 import Background from '../components/Background';
 import Button from '../components/Button';
@@ -20,6 +31,38 @@ const LoginScreen = () => {
   const [passwordError, setPasswordError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+
+  // Animation values
+  const buttonScale = useSharedValue(1);
+  const biometricScale = useSharedValue(1);
+  const socialButtonScales = {
+    google: useSharedValue(1),
+    facebook: useSharedValue(1),
+    apple: useSharedValue(1)
+  };
+
+  // Animated styles
+  const loginButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }]
+  }));
+
+  const biometricButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: biometricScale.value }]
+  }));
+
+  const socialButtonStyles = {
+    google: useAnimatedStyle(() => ({
+      transform: [{ scale: socialButtonScales.google.value }]
+    })),
+    facebook: useAnimatedStyle(() => ({
+      transform: [{ scale: socialButtonScales.facebook.value }]
+    })),
+    apple: useAnimatedStyle(() => ({
+      transform: [{ scale: socialButtonScales.apple.value }]
+    }))
+  };
 
   // Hide navigation bar when login screen is shown
   useEffect(() => {
@@ -40,6 +83,71 @@ const LoginScreen = () => {
 
     hideNavigationBar();
   }, []);
+
+  useEffect(() => {
+    checkBiometricAvailability();
+    loadBiometricPreference();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      setIsBiometricAvailable(compatible && enrolled);
+    } catch (error) {
+      console.error('Error checking biometric availability:', error);
+      setIsBiometricAvailable(false);
+    }
+  };
+
+  const loadBiometricPreference = async () => {
+    try {
+      const preference = await AsyncStorage.getItem('biometricEnabled');
+      setIsBiometricEnabled(preference === 'true');
+    } catch (error) {
+      console.error('Error loading biometric preference:', error);
+    }
+  };
+
+  const toggleBiometric = async () => {
+    try {
+      const newValue = !isBiometricEnabled;
+      await AsyncStorage.setItem('biometricEnabled', String(newValue));
+      setIsBiometricEnabled(newValue);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error('Error toggling biometric:', error);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to login',
+        fallbackLabel: 'Use password',
+      });
+
+      if (result.success) {
+        // Get stored credentials
+        const storedEmail = await AsyncStorage.getItem('lastLoginEmail');
+        const storedPassword = await AsyncStorage.getItem('lastLoginPassword');
+
+        if (storedEmail && storedPassword) {
+          setEmail(storedEmail);
+          setPassword(storedPassword);
+          await handleLogin();
+        } else {
+          Alert.alert(
+            'No Saved Credentials',
+            'Please login with password first to enable biometric login'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Biometric authentication error:', error);
+      Alert.alert('Error', 'Biometric authentication failed. Please try again.');
+    }
+  };
 
   const { width, height } = Dimensions.get('window');
 
@@ -104,12 +212,18 @@ const LoginScreen = () => {
         response.token
       );
 
+      // Store credentials for biometric login if enabled
+      if (isBiometricEnabled) {
+        await AsyncStorage.setItem('lastLoginEmail', email);
+        await AsyncStorage.setItem('lastLoginPassword', password);
+      }
+
       // Success haptic feedback
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Navigate to dashboard
       router.replace('/(dashboard)');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error);
 
       // Error haptic feedback
@@ -140,6 +254,30 @@ const LoginScreen = () => {
     router.push('/(auth)/SignupScreen');
   };
 
+  const handleLoginPress = () => {
+    buttonScale.value = withSequence(
+      withTiming(0.95, { duration: 100 }),
+      withSpring(1, { damping: 10, stiffness: 200 })
+    );
+    handleLogin();
+  };
+
+  const handleBiometricPress = () => {
+    biometricScale.value = withSequence(
+      withTiming(0.95, { duration: 100 }),
+      withSpring(1, { damping: 10, stiffness: 200 })
+    );
+    handleBiometricLogin();
+  };
+
+  const handleSocialPress = (platform: 'google' | 'facebook' | 'apple') => {
+    socialButtonScales[platform].value = withSequence(
+      withTiming(0.95, { duration: 100 }),
+      withSpring(1, { damping: 10, stiffness: 200 })
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   return (
     <Background variant="light">
       <KeyboardAvoidingView
@@ -151,18 +289,18 @@ const LoginScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           <Animated.View
-            entering={FadeIn.duration(800)}
+            entering={FadeIn.duration(1000).springify()}
             style={styles.logoContainer}
           >
             <Logo size="large" />
             <Animated.Text
-              entering={FadeInDown.delay(400).duration(800)}
+              entering={FadeInDown.delay(400).duration(800).springify()}
               style={styles.appName}
             >
               Nepal Disaster Management
             </Animated.Text>
             <Animated.Text
-              entering={FadeInDown.delay(600).duration(800)}
+              entering={FadeInDown.delay(600).duration(800).springify()}
               style={styles.tagline}
             >
               Safety & Support in Times of Need
@@ -170,12 +308,22 @@ const LoginScreen = () => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInUp.delay(800).duration(800)}
+            entering={FadeInUp.delay(800).duration(800).springify()}
             style={styles.formContainer}
           >
-            <Text style={styles.title}>Login</Text>
+            <Animated.Text 
+              entering={FadeInDown.delay(900).duration(600)}
+              style={styles.title}
+            >
+              Login
+            </Animated.Text>
 
-            <AnimatedView animation="slideInUp" delay={200} duration={800}>
+            <AnimatedView 
+              animation="slideInUp" 
+              delay={1000} 
+              duration={600}
+              style={{ transform: [{ scale: 1 }] }}
+            >
               <FormInput
                 label="Email"
                 placeholder="Enter your email"
@@ -188,7 +336,12 @@ const LoginScreen = () => {
               />
             </AnimatedView>
 
-            <AnimatedView animation="slideInUp" delay={400} duration={800}>
+            <AnimatedView 
+              animation="slideInUp" 
+              delay={1200} 
+              duration={600}
+              style={{ transform: [{ scale: 1 }] }}
+            >
               <FormInput
                 label="Password"
                 placeholder="Enter your password"
@@ -200,7 +353,11 @@ const LoginScreen = () => {
               />
             </AnimatedView>
 
-            <AnimatedView animation="fadeIn" delay={600} duration={800}>
+            <AnimatedView 
+              animation="fadeIn" 
+              delay={1400} 
+              duration={600}
+            >
               <TouchableOpacity
                 style={styles.forgotPasswordLink}
                 onPress={handleForgotPassword}
@@ -209,50 +366,117 @@ const LoginScreen = () => {
               </TouchableOpacity>
             </AnimatedView>
 
-            <AnimatedView animation="slideInUp" delay={800} duration={800}>
+            <Animated.View 
+              entering={FadeInUp.delay(1600).duration(600)}
+              style={loginButtonStyle}
+            >
               <Button
                 title="Login"
-                onPress={handleLogin}
+                onPress={handleLoginPress}
                 isLoading={isLoading}
                 disabled={isLoading}
                 type="primary"
                 size="large"
                 style={styles.loginButton}
               />
-            </AnimatedView>
+            </Animated.View>
 
-            <AnimatedView animation="fadeIn" delay={1000} duration={800}>
+            {isBiometricAvailable && (
+              <Animated.View 
+                entering={FadeIn.delay(1800).duration(600)}
+                style={biometricButtonStyle}
+              >
+                <View style={styles.biometricContainer}>
+                  <TouchableOpacity
+                    style={styles.biometricButton}
+                    onPress={handleBiometricPress}
+                    disabled={isLoading}
+                  >
+                    <Ionicons
+                      name={Platform.OS === 'ios' ? 'finger-print' : 'finger-print-outline'}
+                      size={24}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.biometricButtonText}>
+                      Login with Biometric
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.biometricToggle}
+                    onPress={toggleBiometric}
+                  >
+                    <View style={[
+                      styles.toggleSwitch,
+                      isBiometricEnabled && styles.toggleSwitchActive
+                    ]}>
+                      <Animated.View 
+                        style={[
+                          styles.toggleKnob,
+                          isBiometricEnabled && styles.toggleKnobActive
+                        ]} 
+                      />
+                    </View>
+                    <Text style={styles.biometricToggleText}>
+                      Enable Biometric Login
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            )}
+
+            <Animated.View 
+              entering={FadeIn.delay(2000).duration(600)}
+            >
               <View style={styles.dividerContainer}>
                 <View style={styles.divider} />
                 <Text style={styles.dividerText}>OR</Text>
                 <View style={styles.divider} />
               </View>
-            </AnimatedView>
+            </Animated.View>
 
-            <AnimatedView animation="slideInUp" delay={1200} duration={800}>
-              <View style={styles.socialButtonsContainer}>
-                <TouchableOpacity style={styles.socialButton}>
+            <Animated.View 
+              entering={FadeInUp.delay(2200).duration(600)}
+              style={styles.socialButtonsContainer}
+            >
+              <Animated.View style={socialButtonStyles.google}>
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => handleSocialPress('google')}
+                >
                   <Ionicons name="logo-google" size={24} color={colors.danger} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton}>
+              </Animated.View>
+              
+              <Animated.View style={socialButtonStyles.facebook}>
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => handleSocialPress('facebook')}
+                >
                   <Ionicons name="logo-facebook" size={24} color="#4267B2" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton}>
+              </Animated.View>
+              
+              <Animated.View style={socialButtonStyles.apple}>
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => handleSocialPress('apple')}
+                >
                   <Ionicons name="logo-apple" size={24} color="#000" />
                 </TouchableOpacity>
-              </View>
-            </AnimatedView>
+              </Animated.View>
+            </Animated.View>
 
-            <AnimatedView animation="fadeIn" delay={1400} duration={800}>
+            <Animated.View 
+              entering={FadeIn.delay(2400).duration(600)}
+            >
               <View style={styles.signupContainer}>
                 <Text style={styles.signupText}>Don't have an account?</Text>
                 <TouchableOpacity onPress={handleSignUp}>
                   <Text style={styles.signupLink}>Sign Up</Text>
                 </TouchableOpacity>
               </View>
-            </AnimatedView>
-
-
+            </Animated.View>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -350,6 +574,7 @@ const styles = StyleSheet.create({
     ...shadows.small,
     borderWidth: 1,
     borderColor: colors.border,
+    elevation: 2,
   },
   signupContainer: {
     flexDirection: 'row',
@@ -367,7 +592,65 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 5,
   },
-
+  biometricContainer: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.small,
+  },
+  biometricButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  biometricToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+    padding: 2,
+  },
+  toggleSwitchActive: {
+    backgroundColor: colors.primary,
+  },
+  toggleKnob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+    transform: [{ translateX: 0 }],
+  },
+  toggleKnobActive: {
+    transform: [{ translateX: 26 }],
+  },
+  biometricToggleText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: colors.textLight,
+  },
 });
 
 export default LoginScreen;

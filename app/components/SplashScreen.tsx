@@ -4,7 +4,9 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
 
 // Prevent the splash screen from auto-hiding
-ExpoSplashScreen.preventAutoHideAsync();
+ExpoSplashScreen.preventAutoHideAsync().catch(() => {
+  /* ignore error */
+});
 
 interface SplashScreenProps {
   onAnimationComplete: () => void;
@@ -15,79 +17,102 @@ interface SplashScreenProps {
 // const { width, height } = Dimensions.get('window');
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
+  console.log('[SplashScreen] Component rendering');
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
+    console.log('[SplashScreen] Component mounted');
+    let isMounted = true;
+    let animationTimeout: NodeJS.Timeout;
+
     // Hide the native splash screen and configure system UI
     const initialize = async () => {
       try {
-        console.log('Initializing SplashScreen component...');
+        console.log('[SplashScreen] Starting initialization...');
 
-        // Hide the native splash screen
-        await ExpoSplashScreen.hideAsync();
-        console.log('Native splash screen hidden');
+        // Start animations immediately
+        console.log('[SplashScreen] Starting animations...');
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          console.log('[SplashScreen] Animations completed');
+          if (isMounted) {
+            // Add a small delay before completing to ensure smooth transition
+            animationTimeout = setTimeout(() => {
+              if (isMounted) {
+                onAnimationComplete();
+              }
+            }, 200);
+          }
+        });
+
+        // Hide the native splash screen in parallel
+        console.log('[SplashScreen] Attempting to hide native splash screen...');
+        try {
+          await ExpoSplashScreen.hideAsync();
+          console.log('[SplashScreen] Native splash screen hidden successfully');
+        } catch (error) {
+          console.error('[SplashScreen] Error hiding native splash screen:', error);
+          // Continue even if hiding fails
+        }
+
+        if (!isMounted) {
+          console.log('[SplashScreen] Component unmounted during initialization');
+          return;
+        }
 
         // Hide navigation bar on Android
         if (Platform.OS === 'android') {
           try {
-            console.log('Configuring Android UI...');
-            // For now, skip the system UI manager to avoid potential issues
-            /*
+            console.log('[SplashScreen] Configuring Android UI...');
             // Import our SystemUIManager
             const systemUIManager = await import('../utils/systemUIManager');
 
             // Hide navigation bar and set immersive mode
             await systemUIManager.default.hideNavigationBar();
             await systemUIManager.default.setImmersiveMode();
-            */
+            console.log('[SplashScreen] Android UI configured successfully');
           } catch (error) {
-            console.error('Error configuring Android UI:', error);
+            console.error('[SplashScreen] Error configuring Android UI:', error);
+            // Continue even if UI configuration fails
           }
         }
-      } catch (e) {
-        console.log("Error during initialization:", e);
+
+      } catch (error) {
+        console.error('[SplashScreen] Error during initialization:', error);
+        // If there's an error, we should still try to complete the animation
+        if (isMounted) {
+          onAnimationComplete();
+        }
       }
     };
 
-    // Initialize immediately
     initialize();
 
-    // Start animations when component mounts
-    Animated.sequence([
-      // Fade in and scale up
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ]),
-
-      // Rotate for 2 seconds
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: true,
-      }),
-
-      // Fade out
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // Call the callback when animation completes
-      onAnimationComplete();
-    });
+    return () => {
+      console.log('[SplashScreen] Component unmounting');
+      isMounted = false;
+      if (animationTimeout) {
+        clearTimeout(animationTimeout);
+      }
+    };
   }, []);
 
   // Interpolate rotation value

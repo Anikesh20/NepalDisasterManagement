@@ -12,46 +12,70 @@ export default function Index() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    console.log('[Index] Component mounted');
     // Add a small delay to ensure everything is initialized
     const timer = setTimeout(() => {
+      console.log('[Index] Timer triggered, checking auth status...');
       checkAuthStatus();
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      console.log('[Index] Component unmounting');
+      clearTimeout(timer);
+    };
   }, []);
 
   const checkAuthStatus = async () => {
     try {
-      console.log('Checking authentication status...');
-
-      // For testing purposes, let's clear any existing auth state
-      // to ensure we always start at the login screen
-      await AuthStateComponent.authState.clearAuthState();
+      console.log('[Index] Starting authentication check...');
 
       // Check both admin and user authentication
+      console.log('[Index] Checking admin authentication...');
       const adminAuth = await AuthStateComponent.authState.isAdminAuthenticated();
+      console.log('[Index] Checking user authentication...');
       const userAuth = await AuthStateComponent.authState.isUserAuthenticated();
 
-      console.log('Auth status:', { adminAuth, userAuth });
+      console.log('[Index] Auth status:', { adminAuth, userAuth });
 
-      setIsAdmin(adminAuth);
-      setIsUser(userAuth);
+      // Ensure we're not in an invalid state (both admin and user authenticated)
+      if (adminAuth && userAuth) {
+        console.log('[Index] Invalid state detected: both admin and user are authenticated');
+        await AuthStateComponent.authState.clearAuthState();
+        setIsAdmin(false);
+        setIsUser(false);
+      } else {
+        setIsAdmin(adminAuth);
+        setIsUser(userAuth);
+      }
+      
       setIsLoading(false);
+      console.log('[Index] Auth check complete, loading state updated');
     } catch (error) {
-      console.error('Error checking authentication status:', error);
+      console.error('[Index] Error checking authentication status:', error);
+      // On error, clear auth state and set to not authenticated
+      try {
+        await AuthStateComponent.authState.clearAuthState();
+      } catch (clearError) {
+        console.error('[Index] Error clearing auth state:', clearError);
+      }
+      setIsAdmin(false);
+      setIsUser(false);
       setIsLoading(false);
     }
   };
 
   const handleSplashComplete = () => {
+    console.log('[Index] Splash screen animation complete');
     setShowSplash(false);
   };
 
   if (showSplash) {
+    console.log('[Index] Rendering splash screen');
     return <SplashScreen onAnimationComplete={handleSplashComplete} />;
   }
 
   if (isLoading) {
+    console.log('[Index] Rendering loading indicator');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -59,6 +83,7 @@ export default function Index() {
     );
   }
 
+  console.log('[Index] Rendering main content, auth state:', { isAdmin, isUser });
   // Redirect based on authentication status
   if (isAdmin) {
     return <Redirect href="/(admin)" />;

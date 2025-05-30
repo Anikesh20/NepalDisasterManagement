@@ -1,10 +1,10 @@
-import React from 'react';
-import { StyleSheet, Text, View, Modal, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { colors, shadows } from '../styles/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
+import React from 'react';
+import { Dimensions, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { colors, shadows } from '../styles/theme';
 
 interface DonationSuccessModalProps {
   visible: boolean;
@@ -48,6 +48,10 @@ const DonationSuccessModal: React.FC<DonationSuccessModalProps> = ({
             <Text style={styles.transactionLabel}>Transaction ID:</Text>
             <Text style={styles.transactionId}>{transactionId}</Text>
           </View>
+
+          <Text style={styles.confirmationMessage}>
+            A confirmation has been sent to your registered email and phone number.
+          </Text>
           
           <Text style={styles.impactMessage}>
             Your generosity will help disaster victims rebuild their lives.
@@ -143,6 +147,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
+  },
+  confirmationMessage: {
+    fontSize: 14,
+    color: colors.textLight,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontStyle: 'italic',
   },
   impactMessage: {
     fontSize: 14,

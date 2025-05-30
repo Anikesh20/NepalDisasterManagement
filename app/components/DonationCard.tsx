@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useStripe } from '@stripe/stripe-react-native';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import paymentService from '../services/paymentService';
 import { colors, shadows } from '../styles/theme';
 
 interface DonationCardProps {
-  onDonate: (amount: number) => void;
+  onDonate: (amount: number, transactionId: string) => void;
 }
 
 const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [expanded, setExpanded] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const predefinedAmounts = [100, 500, 1000, 5000];
 
@@ -27,14 +31,61 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
     setSelectedAmount(null);
   };
 
-  const handleDonate = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const amount = selectedAmount || (customAmount ? parseInt(customAmount, 10) : 0);
-    if (amount > 0) {
-      onDonate(amount);
-      setSelectedAmount(null);
-      setCustomAmount('');
-      setExpanded(false);
+  const handleDonate = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const amount = selectedAmount || (customAmount ? parseInt(customAmount, 10) : 0);
+      
+      if (amount <= 0) {
+        Alert.alert('Invalid Amount', 'Please enter a valid donation amount.');
+        return;
+      }
+
+      setIsProcessing(true);
+
+      // Create payment intent
+      const { clientSecret, paymentIntentId } = await paymentService.createPaymentIntent(amount);
+
+      // Initialize payment sheet
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: 'Nepal Disaster Management',
+        style: 'automatic',
+        defaultBillingDetails: {
+          name: 'Donation',
+        },
+      });
+
+      if (initError) {
+        throw new Error(initError.message);
+      }
+
+      // Present payment sheet
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        throw new Error(presentError.message);
+      }
+
+      // Confirm payment
+      const { success, paymentIntent } = await paymentService.confirmPayment(paymentIntentId);
+
+      if (success && paymentIntent.status === 'succeeded') {
+        onDonate(amount, paymentIntent.id);
+        setSelectedAmount(null);
+        setCustomAmount('');
+        setExpanded(false);
+      } else {
+        throw new Error('Payment was not successful');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      Alert.alert(
+        'Payment Failed',
+        error instanceof Error ? error.message : 'An error occurred while processing your payment. Please try again.'
+      );
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -49,6 +100,7 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
         style={styles.header} 
         onPress={toggleExpand}
         activeOpacity={0.8}
+        disabled={isProcessing}
       >
         <View style={styles.headerContent}>
           <View style={styles.iconContainer}>
@@ -78,15 +130,18 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
                 key={amount}
                 style={[
                   styles.amountButton,
-                  selectedAmount === amount && styles.selectedAmountButton
+                  selectedAmount === amount && styles.selectedAmountButton,
+                  isProcessing && styles.disabledButton
                 ]}
                 onPress={() => handleAmountSelect(amount)}
                 activeOpacity={0.7}
+                disabled={isProcessing}
               >
                 <Text 
                   style={[
                     styles.amountText,
-                    selectedAmount === amount && styles.selectedAmountText
+                    selectedAmount === amount && styles.selectedAmountText,
+                    isProcessing && styles.disabledText
                   ]}
                 >
                   Rs. {amount}
@@ -106,6 +161,7 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
                 placeholder="Enter amount"
                 keyboardType="number-pad"
                 placeholderTextColor={colors.textLight}
+                editable={!isProcessing}
               />
             </View>
           </View>
@@ -113,10 +169,11 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
           <TouchableOpacity
             style={[
               styles.donateButton,
-              (!selectedAmount && !customAmount) && styles.disabledButton
+              (!selectedAmount && !customAmount) && styles.disabledButton,
+              isProcessing && styles.processingButton
             ]}
             onPress={handleDonate}
-            disabled={!selectedAmount && !customAmount}
+            disabled={(!selectedAmount && !customAmount) || isProcessing}
             activeOpacity={0.7}
           >
             <LinearGradient
@@ -125,8 +182,10 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
               end={{ x: 1, y: 0 }}
               style={styles.donateButtonGradient}
             >
-              <Text style={styles.donateButtonText}>Donate Now</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Text style={styles.donateButtonText}>
+                {isProcessing ? 'Processing...' : 'Donate Now'}
+              </Text>
+              {!isProcessing && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -271,6 +330,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginRight: 8,
+  },
+  processingButton: {
+    opacity: 0.7,
+  },
+  disabledText: {
+    opacity: 0.5,
   },
 });
 
