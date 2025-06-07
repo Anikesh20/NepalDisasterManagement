@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -80,107 +79,51 @@ export default function DisasterDetailsScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Disaster Details</Text>
-      </View>
-
       <View style={styles.content}>
-        <LinearGradient
-          colors={[getDisasterColor(disaster.type) + '30', getDisasterColor(disaster.type) + '10']}
-          style={styles.banner}
-        >
-          <View style={[styles.iconContainer, { backgroundColor: getDisasterColor(disaster.type) + '30' }]}>
-            <Ionicons name={getDisasterIcon(disaster.type)} size={40} color={getDisasterColor(disaster.type)} />
+        <View style={styles.disasterHeader}>
+          <View style={[styles.iconContainer, { backgroundColor: getDisasterColor(disaster.type) + '20' }]}>
+            <Ionicons name={getDisasterIcon(disaster.type)} size={32} color={getDisasterColor(disaster.type)} />
           </View>
-          <Text style={styles.title}>{disaster.title}</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>{disaster.title}</Text>
+            <View style={styles.meta}>
+              <Text style={styles.location}>{disaster.location}, {disaster.district}</Text>
+              <View style={styles.timeContainer}>
+                <Ionicons name="time-outline" size={12} color={colors.textLight} style={styles.timeIcon} />
+                <Text style={styles.time}>{formatDate(disaster.timestamp)}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.severityContainer}>
           <View style={[styles.severityBadge, { backgroundColor: getSeverityColor(disaster.severity) + '20' }]}>
             <Text style={[styles.severityText, { color: getSeverityColor(disaster.severity) }]}>
               {disaster.severity.toUpperCase()}
             </Text>
           </View>
-        </LinearGradient>
-
-        <View style={styles.infoSection}>
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Ionicons name="location-outline" size={20} color={colors.primary} />
-              <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Location</Text>
-                <Text style={styles.infoValue}>{disaster.location}, {disaster.district}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Ionicons name="time-outline" size={20} color={colors.primary} />
-              <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Occurred</Text>
-                <Text style={styles.infoValue}>{formatDate(disaster.timestamp)}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Ionicons name="map-outline" size={20} color={colors.primary} />
-              <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Affected Area</Text>
-                <Text style={styles.infoValue}>{disaster.affectedArea}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-              <View style={styles.infoTextContainer}>
-                <Text style={styles.infoLabel}>Last Updated</Text>
-                <Text style={styles.infoValue}>{formatDate(disaster.updatedAt)}</Text>
-              </View>
-            </View>
-          </View>
         </View>
 
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Impact</Text>
-          <View style={styles.statsContainer}>
-            {disaster.casualties !== undefined && (
-              <View style={[styles.statCard, shadows.small]}>
-                <View style={[styles.statIconContainer, { backgroundColor: colors.danger + '20' }]}>
-                  <Ionicons name="sad-outline" size={24} color={colors.danger} />
-                </View>
-                <Text style={styles.statValue}>{disaster.casualties}</Text>
-                <Text style={styles.statLabel}>Casualties</Text>
-              </View>
-            )}
-
-            {disaster.evacuees !== undefined && (
-              <View style={[styles.statCard, shadows.small]}>
-                <View style={[styles.statIconContainer, { backgroundColor: colors.warning + '20' }]}>
-                  <Ionicons name="people-outline" size={24} color={colors.warning} />
-                </View>
-                <Text style={styles.statValue}>{disaster.evacuees}</Text>
-                <Text style={styles.statLabel}>Evacuees</Text>
-              </View>
-            )}
-
-            <View style={[styles.statCard, shadows.small]}>
-              <View style={[styles.statIconContainer, { backgroundColor: colors.primary + '20' }]}>
-                <Ionicons name="alert-outline" size={24} color={colors.primary} />
-              </View>
-              <Text style={styles.statValue}>{disaster.isActive ? 'Active' : 'Resolved'}</Text>
-              <Text style={styles.statLabel}>Status</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.descriptionSection}>
-          <Text style={styles.sectionTitle}>Description</Text>
+        <View style={styles.descriptionContainer}>
           <Text style={styles.description}>{disaster.description}</Text>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Ionicons name="people-outline" size={20} color={colors.textLight} />
+            <Text style={styles.statValue}>{disaster.affectedPeople || 0}</Text>
+            <Text style={styles.statLabel}>Affected</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="home-outline" size={20} color={colors.textLight} />
+            <Text style={styles.statValue}>{disaster.damagedHouses || 0}</Text>
+            <Text style={styles.statLabel}>Houses</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="medical-outline" size={20} color={colors.textLight} />
+            <Text style={styles.statValue}>{disaster.injuredPeople || 0}</Text>
+            <Text style={styles.statLabel}>Injured</Text>
+          </View>
         </View>
 
         <View style={styles.actionsSection}>
@@ -210,31 +153,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginLeft: 16,
-  },
   content: {
     padding: 16,
   },
-  banner: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
+  disasterHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 20,
   },
   iconContainer: {
     width: 80,
@@ -242,14 +167,41 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginRight: 16,
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
-    textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  location: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
+  timeIcon: {
+    marginRight: 4,
+  },
+  time: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  severityContainer: {
+    marginBottom: 20,
   },
   severityBadge: {
     paddingHorizontal: 12,
@@ -260,71 +212,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  infoSection: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    ...shadows.small,
-  },
-  infoRow: {
-    marginBottom: 16,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoTextContainer: {
-    marginLeft: 12,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  statsSection: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  descriptionSection: {
+  descriptionContainer: {
     backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
@@ -335,6 +223,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: colors.text,
+  },
+  statsContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    ...shadows.small,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statValue: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textLight,
   },
   actionsSection: {
     flexDirection: 'row',
@@ -379,6 +289,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
     marginBottom: 24,
+  },
+  backButton: {
+    padding: 8,
   },
   backButtonText: {
     color: colors.primary,

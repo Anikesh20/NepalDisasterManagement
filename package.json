@@ -30,6 +30,7 @@
     "expo-image-picker": "~16.1.4",
     "expo-linear-gradient": "^14.1.4",
     "expo-linking": "~7.1.4",
+    "expo-local-authentication": "~16.0.4",
     "expo-location": "~18.1.5",
     "expo-navigation-bar": "^4.2.4",
     "expo-notifications": "^0.31.2",
@@ -62,8 +63,7 @@
     "react-native-webview": "13.13.5",
     "react-native-xml2js": "^1.0.3",
     "stripe": "^18.1.1",
-    "twilio": "^5.7.0",
-    "expo-local-authentication": "~16.0.4"
+    "twilio": "^5.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

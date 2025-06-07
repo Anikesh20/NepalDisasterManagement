@@ -3,12 +3,13 @@ export const API_CONFIG = {
     baseUrl: 'http://localhost:3000',
   },
   production: {
-    baseUrl: 'https://nepaldisastermanagement-production.up.railway.app',
+    // Replace with your Railway.app domain after deployment
+    baseUrl: 'https://nepal-disaster-management-backend.railway.app',
   },
 };
 
 // Get the current environment
-const ENV = process.env.NODE_ENV || 'development';
+const ENV = __DEV__ ? 'development' : 'production';
 
 // Export the current configuration
 export const API_URL = API_CONFIG[ENV].baseUrl;

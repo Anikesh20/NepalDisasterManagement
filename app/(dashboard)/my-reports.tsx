@@ -133,19 +133,6 @@ export default function MyReportsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Reports</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/(dashboard)/report-disaster')}
-        >
-          <Ionicons name="add" size={24} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
       <FlatList
         data={reports}
         keyExtractor={(item) => item.id || item.timestamp}
@@ -163,29 +150,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  addButton: {
-    padding: 8,
-  },
   listContainer: {
     padding: 16,
-    paddingBottom: 40,
   },
   reportCard: {
     backgroundColor: colors.card,

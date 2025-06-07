@@ -121,31 +121,84 @@ const LoginScreen = () => {
   };
 
   const handleBiometricLogin = async () => {
+    if (isLoading) return; // Prevent multiple simultaneous attempts
+    
     try {
+      setIsLoading(true);
+      
+      // Get stored credentials first
+      const [storedEmail, storedPassword] = await Promise.all([
+        AsyncStorage.getItem('lastLoginEmail'),
+        AsyncStorage.getItem('lastLoginPassword')
+      ]);
+
+      if (!storedEmail || !storedPassword) {
+        Alert.alert(
+          'No Saved Credentials',
+          'Please login with password first to enable biometric login'
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Authenticate with biometrics
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Authenticate to login',
         fallbackLabel: 'Use password',
+        disableDeviceFallback: true,
+        cancelLabel: 'Cancel',
+        requireAuthentication: true,
       });
 
-      if (result.success) {
-        // Get stored credentials
-        const storedEmail = await AsyncStorage.getItem('lastLoginEmail');
-        const storedPassword = await AsyncStorage.getItem('lastLoginPassword');
+      if (!result.success) {
+        setIsLoading(false);
+        return;
+      }
 
-        if (storedEmail && storedPassword) {
-          setEmail(storedEmail);
-          setPassword(storedPassword);
-          await handleLogin();
-        } else {
-          Alert.alert(
-            'No Saved Credentials',
-            'Please login with password first to enable biometric login'
-          );
+      // Direct login without setting state
+      try {
+        // Check if admin credentials were entered
+        if (storedEmail === 'admin@gmail.com' && storedPassword === '000000') {
+          const { saveAdminAuthState } = await import('../utils/authState');
+          await saveAdminAuthState();
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.replace('/(admin)');
+          return;
         }
+
+        // Regular user login
+        const response = await login(storedEmail, storedPassword);
+        const { saveUserAuthState } = await import('../utils/authState');
+        
+        // Save user authentication state
+        await saveUserAuthState(
+          response.user.id.toString(),
+          response.token
+        );
+
+        // Store credentials for biometric login if enabled
+        if (isBiometricEnabled) {
+          await AsyncStorage.setItem('lastLoginEmail', storedEmail);
+          await AsyncStorage.setItem('lastLoginPassword', storedPassword);
+        }
+
+        // Success haptic feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
+        // Navigate to dashboard
+        router.replace('/(dashboard)');
+      } catch (error: any) {
+        console.error('Login error:', error);
+        Alert.alert(
+          'Error',
+          error.message || 'Failed to login. Please try again.'
+        );
       }
     } catch (error) {
       console.error('Biometric authentication error:', error);
       Alert.alert('Error', 'Biometric authentication failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -3,12 +3,29 @@ import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React, { useEffect } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { logout } from '../services/authService';
 import { colors } from '../styles/theme';
 
 export default function DashboardLayout() {
   const router = useRouter();
+
+  useEffect(() => {
+    const hideNavigationBar = async () => {
+      if (Platform.OS === 'android') {
+        try {
+          const systemUIManager = await import('../utils/systemUIManager');
+          await systemUIManager.default.hideNavigationBar();
+          await systemUIManager.default.setImmersiveMode();
+        } catch (error) {
+          console.error('Error hiding navigation bar:', error);
+        }
+      }
+    };
+
+    hideNavigationBar();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -87,18 +104,35 @@ export default function DashboardLayout() {
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                   </TouchableOpacity>
                   <Text style={styles.headerTitle}>{options.title || route.name}</Text>
+                  {route.name === 'my-reports' && (
+                    <TouchableOpacity
+                      style={styles.headerRightButton}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        navigation.navigate('report-disaster');
+                      }}
+                    >
+                      <Ionicons name="add" size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             );
           },
           headerStyle: {
             backgroundColor: colors.background,
-            height: Platform.OS === 'ios' ? 120 : 100, // Increased height further
+            height: Platform.OS === 'ios' ? 140 : 120,
             elevation: 0,
             shadowOpacity: 0,
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
+            paddingTop: Platform.OS === 'ios' ? 20 : 15,
           },
+          contentStyle: {
+            backgroundColor: colors.background,
+            paddingTop: Platform.OS === 'ios' ? 10 : 15,
+          },
+          headerStatusBarHeight: Platform.OS === 'ios' ? 20 : statusBarHeight + 10,
         }}
       >
         <Stack.Screen
@@ -132,6 +166,12 @@ export default function DashboardLayout() {
           }}
         />
         <Stack.Screen
+          name="all-actions"
+          options={{
+            title: 'All Actions',
+          }}
+        />
+        <Stack.Screen
           name="emergency-contacts"
           options={{
             title: 'Emergency Contacts',
@@ -162,12 +202,6 @@ export default function DashboardLayout() {
           }}
         />
         <Stack.Screen
-          name="all-actions"
-          options={{
-            title: 'All Actions',
-          }}
-        />
-        <Stack.Screen
           name="weather"
           options={{
             title: 'Weather',
@@ -189,13 +223,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    zIndex: 1, // Ensure header stays on top
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56, // Increased height for better touch target
+    height: 56,
     paddingHorizontal: 16,
-    marginTop: 10, // Additional margin from status bar
+    marginTop: 10,
   },
   backButton: {
     width: 44, // Slightly larger touch target
@@ -211,5 +246,9 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 8,
+  },
+  headerRightButton: {
+    padding: 8,
+    marginLeft: 'auto',
   },
 });

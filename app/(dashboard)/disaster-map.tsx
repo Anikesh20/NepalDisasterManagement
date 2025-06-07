@@ -142,13 +142,6 @@ export default function DisasterMapScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Disaster Map</Text>
-      </View>
-
       <View style={styles.filtersContainer}>
         <Text style={styles.filtersTitle}>Filter by type:</Text>
         <View style={styles.filterChipsContainer}>
@@ -230,27 +223,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginLeft: 16,
-  },
   filtersContainer: {
     padding: 16,
     backgroundColor: colors.card,
-    ...shadows.small,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   filtersTitle: {
     fontSize: 16,

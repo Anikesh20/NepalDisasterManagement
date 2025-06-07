@@ -1,9 +1,9 @@
 import { Redirect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import SplashScreen from './components/SplashScreen';
 import { colors } from './styles/theme';
-import AuthStateComponent from './utils/authState';
+import * as AuthStateComponent from './utils/authState';
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
@@ -12,17 +12,23 @@ export default function Index() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    console.log('[Index] Component mounted');
-    // Add a small delay to ensure everything is initialized
-    const timer = setTimeout(() => {
-      console.log('[Index] Timer triggered, checking auth status...');
-      checkAuthStatus();
-    }, 500);
-
-    return () => {
-      console.log('[Index] Component unmounting');
-      clearTimeout(timer);
+    const initializeApp = async () => {
+      // Hide navigation bar on Android
+      if (Platform.OS === 'android') {
+        try {
+          const systemUIManager = await import('./utils/systemUIManager');
+          await systemUIManager.default.hideNavigationBar();
+          await systemUIManager.default.setImmersiveMode();
+        } catch (error) {
+          console.error('Error hiding navigation bar:', error);
+        }
+      }
+      
+      // Check authentication status
+      await checkAuthStatus();
     };
+
+    initializeApp();
   }, []);
 
   const checkAuthStatus = async () => {

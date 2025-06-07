@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DisasterCard from '../components/DisasterCard';
 import disasterService, { DisasterData, DisasterType } from '../services/disasterService';
-import { colors, shadows } from '../styles/theme';
+import { colors } from '../styles/theme';
 
 export default function AlertsScreen() {
   const router = useRouter();
@@ -115,13 +115,6 @@ export default function AlertsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Disaster Alerts</Text>
-      </View>
-
       <View style={styles.filtersContainer}>
         <Text style={styles.filtersTitle}>Filter by type:</Text>
         <View style={styles.filterChipsContainer}>
@@ -134,15 +127,14 @@ export default function AlertsScreen() {
         </View>
       </View>
 
-      {renderEmptyState() || (
-        <FlatList
-          data={filteredDisasters}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <DisasterCard disaster={item} />}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      <FlatList
+        data={filteredDisasters}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <DisasterCard disaster={item} />}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={renderEmptyState}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
@@ -152,28 +144,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginLeft: 16,
-  },
   filtersContainer: {
     padding: 16,
     backgroundColor: colors.card,
-    marginBottom: 8,
-    ...shadows.small,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   filtersTitle: {
     fontSize: 16,

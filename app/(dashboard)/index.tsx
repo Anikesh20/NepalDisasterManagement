@@ -249,7 +249,7 @@ export default function DashboardScreen() {
   const menuItems: MenuItem[] = [
     {
       title: 'My Profile',
-      icon: 'person-outline',
+      icon: 'person',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/profile');
@@ -257,7 +257,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'Emergency Contacts',
-      icon: 'call-outline',
+      icon: 'call',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/emergency-contacts');
@@ -265,7 +265,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'Disaster Map',
-      icon: 'map-outline',
+      icon: 'map',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/disaster-map');
@@ -273,7 +273,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'Report Disaster',
-      icon: 'warning-outline',
+      icon: 'warning',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/report-disaster');
@@ -281,7 +281,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'Disaster Alerts',
-      icon: 'alert-outline',
+      icon: 'alert',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/alerts');
@@ -289,7 +289,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'Historical Data',
-      icon: 'bar-chart-outline',
+      icon: 'bar-chart',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/historical-data');
@@ -297,7 +297,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'My Reports',
-      icon: 'document-text-outline',
+      icon: 'document-text',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/my-reports');
@@ -305,7 +305,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'Volunteer Status',
-      icon: 'people-outline',
+      icon: 'people',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/volunteer-status');
@@ -313,7 +313,7 @@ export default function DashboardScreen() {
     },
     {
       title: 'Settings',
-      icon: 'settings-outline',
+      icon: 'settings',
       onPress: () => {
         setMenuVisible(false);
         router.push('/settings' as any);
@@ -321,20 +321,13 @@ export default function DashboardScreen() {
     },
     {
       title: 'Logout',
-      icon: 'log-out-outline',
+      icon: 'log-out',
       onPress: async () => {
         setMenuVisible(false);
         try {
-          // Import the auth state utility
           const { clearAuthState } = await import('../utils/authState');
-
-          // Clear authentication state
           await clearAuthState();
-
-          // Call the logout function from authService
           await logout();
-
-          // Navigate to login screen
           router.replace('/(auth)/LoginScreen');
         } catch (error) {
           console.error('Error during logout:', error);
@@ -554,11 +547,14 @@ export default function DashboardScreen() {
                 onPress={item.onPress}
               >
                 <View style={styles.menuItemContent}>
-                  <Ionicons
-                    name={item.icon as any}
-                    size={24}
-                    color={colors.text}
-                  />
+                  <View style={styles.menuIconContainer}>
+                    <Ionicons
+                      name={item.icon as any}
+                      size={24}
+                      color="#FF0000"
+                      style={styles.menuIcon}
+                    />
+                  </View>
                   <Text style={styles.menuItemText}>
                     {item.title}
                   </Text>
@@ -1402,8 +1398,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomWidth: 0,
   },
   closeButton: {
     width: 40,
@@ -1419,17 +1414,35 @@ const styles = StyleSheet.create({
   menuItem: {
     paddingVertical: 16,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: 'transparent',
   },
   menuItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  menuIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 0, 0, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    ...shadows.small,
+    transform: [{ perspective: 1000 }, { rotateX: '5deg' }, { rotateY: '5deg' }],
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 0, 0, 0.15)',
+  },
+  menuIcon: {
+    transform: [{ scale: 1.1 }],
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0.5, height: 0.5 },
+    textShadowRadius: 1,
+    opacity: 0.9,
+  },
   menuItemText: {
     fontSize: 16,
     color: colors.text,
-    marginLeft: 16,
     fontWeight: '500',
   },
   logoutButton: {
@@ -1444,8 +1457,7 @@ const styles = StyleSheet.create({
   },
   menuProfileSection: {
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomWidth: 0,
     alignItems: 'center',
   },
   menuProfileImage: {
