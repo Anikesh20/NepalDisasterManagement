@@ -121,18 +121,17 @@ export default function DashboardLayout() {
           },
           headerStyle: {
             backgroundColor: colors.background,
-            height: Platform.OS === 'ios' ? 140 : 120,
+            height: Platform.OS === 'ios' ? 120 : 100,
             elevation: 0,
             shadowOpacity: 0,
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
-            paddingTop: Platform.OS === 'ios' ? 20 : 15,
           },
           contentStyle: {
             backgroundColor: colors.background,
-            paddingTop: Platform.OS === 'ios' ? 10 : 15,
+            paddingTop: Platform.OS === 'ios' ? 0 : 10, // Add padding for Android
           },
-          headerStatusBarHeight: Platform.OS === 'ios' ? 20 : statusBarHeight + 10,
+          headerStatusBarHeight: Platform.OS === 'ios' ? 0 : statusBarHeight, // Adjust status bar height
         }}
       >
         <Stack.Screen

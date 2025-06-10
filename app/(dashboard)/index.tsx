@@ -5,23 +5,33 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, SlideInRight } from 'react-native-reanimated';
+import Animated, {
+    FadeInDown,
+    FadeInUp,
+    interpolate,
+    SlideInRight,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated';
 import ALogoHeader from '../components/ALogoHeader';
 import DisasterCard from '../components/DisasterCard';
 import DonationCard from '../components/DonationCard';
@@ -95,6 +105,38 @@ export default function DashboardScreen() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  const scrollY = useSharedValue(0);
+  const contentHeight = useSharedValue(0);
+  const scrollViewHeight = useSharedValue(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleDashboardScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    scrollY.value = offsetY;
+  };
+
+  const handleContentSizeChange = (width: number, height: number) => {
+    contentHeight.value = height;
+  };
+
+  const handleLayout = (event: any) => {
+    scrollViewHeight.value = event.nativeEvent.layout.height;
+  };
+
+  const bottomPaddingStyle = useAnimatedStyle(() => {
+    const isAtBottom = scrollY.value + scrollViewHeight.value >= contentHeight.value - 50;
+    const padding = interpolate(
+      scrollY.value,
+      [contentHeight.value - scrollViewHeight.value - 100, contentHeight.value - scrollViewHeight.value],
+      [0, 30],
+      'clamp'
+    );
+    
+    return {
+      paddingBottom: withTiming(padding, { duration: 150 }),
+    };
+  });
 
   const fetchWeatherData = async (latitude: number, longitude: number) => {
     try {
@@ -358,7 +400,7 @@ export default function DashboardScreen() {
   ];
 
   // Add scroll handler for pagination
-  const handleScroll = (event: any) => {
+  const handleDisasterCardScroll = (event: any) => {
     const contentOffset = event.nativeEvent.contentOffset.x;
     const cardWidth = 296; // card width + margin
     const index = Math.round(contentOffset / cardWidth);
@@ -421,7 +463,7 @@ export default function DashboardScreen() {
           decelerationRate="fast"
           snapToInterval={296} // card width + margin
           snapToAlignment="start"
-          onScroll={handleScroll}
+          onScroll={handleDisasterCardScroll}
           scrollEventThrottle={16}
           pagingEnabled
           bounces={false}
@@ -755,8 +797,17 @@ export default function DashboardScreen() {
   return (
     <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
       <View style={styles.container}>
-        {renderHeader()}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <StatusBar barStyle="light-content" />
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, bottomPaddingStyle]}
+          onScroll={handleDashboardScroll}
+          onContentSizeChange={handleContentSizeChange}
+          onLayout={handleLayout}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.quickActionsHeader}>
             <Text style={styles.sectionHeader}>Quick Actions</Text>
             <TouchableOpacity
@@ -774,6 +825,8 @@ export default function DashboardScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.quickActionsScrollContainer}
+            onScroll={handleDisasterCardScroll}
+            scrollEventThrottle={16}
           >
             {quickActions.map((action: QuickAction, index: number) => (
               <Animated.View
@@ -1616,5 +1669,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: -4,
     opacity: 0.9,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });

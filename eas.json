@@ -29,25 +29,12 @@
       "android": {
         "buildType": "app-bundle"
       },
-      "ios": {
-        "enterpriseProvisioning": "universal"
-      },
       "env": {
         "NODE_ENV": "production"
       }
     }
   },
   "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./path-to-your-service-account.json",
-        "track": "production"
-      },
-      "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
-      }
-    }
+    "production": {}
   }
 } 

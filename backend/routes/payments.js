@@ -1,15 +1,15 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const { confirmPayment, createPaymentIntent } = require('../stripe');
-const twilio = require('twilio');
+// const twilio = require('twilio');
 
 const router = express.Router();
 
-// Initialize Twilio
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// Initialize Twilio - temporarily disabled
+// const twilioClient = twilio(
+//   process.env.TWILIO_ACCOUNT_SID,
+//   process.env.TWILIO_AUTH_TOKEN
+// );
 
 // Create a payment intent
 router.post('/create-payment-intent', authenticateToken, async (req, res) => {
@@ -49,49 +49,31 @@ router.post('/confirm-payment', authenticateToken, async (req, res) => {
     console.log('Payment intent status:', paymentIntent.status);
     
     if (paymentIntent.status === 'succeeded') {
-      // Send SMS notification if phone number is provided
-      if (phoneNumber) {
-        try {
-          console.log('Attempting to send SMS to:', phoneNumber);
-          console.log('Using Twilio credentials:', {
-            accountSid: process.env.TWILIO_ACCOUNT_SID ? 'Set' : 'Not Set',
-            authToken: process.env.TWILIO_AUTH_TOKEN ? 'Set' : 'Not Set',
-            fromNumber: process.env.TWILIO_PHONE_NUMBER
-          });
-
-          const message = `Thank you for your donation of Rs. ${paymentIntent.amount/100} to Nepal Disaster Management System. Your contribution makes a difference!`;
-          
-          const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+977${phoneNumber}`;
-          console.log('Formatted phone number:', formattedNumber);
-          
-          const result = await twilioClient.messages.create({
-            body: message,
-            to: formattedNumber,
-            from: process.env.TWILIO_PHONE_NUMBER,
-          });
-          
-          console.log('SMS sent successfully:', {
-            sid: result.sid,
-            status: result.status,
-            to: result.to
-          });
-        } catch (smsError) {
-          console.error('Error sending SMS notification:', {
-            error: smsError.message,
-            code: smsError.code,
-            status: smsError.status,
-            moreInfo: smsError.moreInfo
-          });
-          // Don't fail the payment if SMS fails
-        }
-      } else {
-        console.log('No phone number provided for SMS notification');
-      }
+      // SMS notification temporarily disabled
+      // if (phoneNumber) {
+      //   try {
+      //     console.log('Attempting to send SMS to:', phoneNumber);
+      //     const message = `Thank you for your donation of Rs. ${paymentIntent.amount/100} to Nepal Disaster Management System. Your contribution makes a difference!`;
+      //     const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+977${phoneNumber}`;
+      //     const result = await twilioClient.messages.create({
+      //       body: message,
+      //       to: formattedNumber,
+      //       from: process.env.TWILIO_PHONE_NUMBER,
+      //     });
+      //     console.log('SMS sent successfully:', {
+      //       sid: result.sid,
+      //       status: result.status,
+      //       to: result.to
+      //     });
+      //   } catch (smsError) {
+      //     console.error('Error sending SMS notification:', smsError);
+      //   }
+      // }
       
       res.json({
         success: true,
         paymentIntent,
-        notificationSent: !!phoneNumber
+        notificationSent: false // SMS notifications disabled
       });
     } else {
       console.log('Payment not successful:', paymentIntent.status);
