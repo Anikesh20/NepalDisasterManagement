@@ -209,6 +209,11 @@ export default function DashboardScreen() {
     requestLocationPermission();
   }, []);
 
+  // Fetch disasters on component mount
+  useEffect(() => {
+    fetchDisasters();
+  }, []);
+
   const fetchDisasters = async () => {
     try {
       setLoadingDisasters(true);
