@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+<<<<<<< HEAD
   ActivityIndicator,
   Alert,
   Dimensions,
@@ -31,6 +32,32 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+=======
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Animated, {
+    FadeInDown,
+    FadeInUp,
+    interpolate,
+    SlideInRight,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+>>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
 } from 'react-native-reanimated';
 import ALogoHeader from '../components/ALogoHeader';
 import ChatbotModal from '../components/ChatbotModal';
@@ -107,9 +134,12 @@ export default function DashboardScreen() {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
+<<<<<<< HEAD
   // Chatbot state
   const [chatbotModalVisible, setChatbotModalVisible] = useState(false);
 
+=======
+>>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
   const scrollY = useSharedValue(0);
   const contentHeight = useSharedValue(0);
   const scrollViewHeight = useSharedValue(0);
@@ -813,7 +843,10 @@ export default function DashboardScreen() {
     <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
+<<<<<<< HEAD
         {renderHeader()}
+=======
+>>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
@@ -1719,6 +1752,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
+<<<<<<< HEAD
   floatingChatbotButton: {
     position: 'absolute',
     bottom: 20,
@@ -1738,5 +1772,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+=======
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+>>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
   },
 });
