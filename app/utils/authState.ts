@@ -27,10 +27,10 @@ export const saveUserAuthState = async (userId: string, token: string): Promise<
 /**
  * Save admin authentication state
  */
-export const saveAdminAuthState = async (): Promise<void> => {
+export const saveAdminAuthState = async (token: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(IS_ADMIN_KEY, 'true');
-    await AsyncStorage.setItem(ADMIN_TOKEN_KEY, 'admin_session_token');
+    await AsyncStorage.setItem(ADMIN_TOKEN_KEY, token);
     // Clear regular user auth when logging in as admin
     await AsyncStorage.removeItem(USER_ID_KEY);
     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);

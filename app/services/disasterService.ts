@@ -1,4 +1,3 @@
-
 // Types of disasters
 export enum DisasterType {
   EARTHQUAKE = 'earthquake',
@@ -189,21 +188,21 @@ export const getDisasterById = async (id: string): Promise<DisasterData | null> 
 export const getDisasterIcon = (type: DisasterType): string => {
   switch (type) {
     case DisasterType.EARTHQUAKE:
-      return 'earth';
+      return 'earth-outline';
     case DisasterType.FLOOD:
-      return 'water';
+      return 'water-outline';
     case DisasterType.FIRE:
-      return 'flame';
+      return 'flame-outline';
     case DisasterType.LANDSLIDE:
-      return 'trending-down';
+      return 'trending-down-outline';
     case DisasterType.AVALANCHE:
-      return 'snow';
+      return 'snow-outline';
     case DisasterType.STORM:
-      return 'thunderstorm';
+      return 'thunderstorm-outline';
     case DisasterType.DROUGHT:
-      return 'sunny';
+      return 'sunny-outline';
     default:
-      return 'alert-circle';
+      return 'alert-circle-outline';
   }
 };
 

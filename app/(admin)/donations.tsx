@@ -1,4 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
+/* Updated Admin Donations Table (app/(admin)/donations.tsx) – now fetches from /api/payments/all via adminService.getAllDonations */
+
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -7,9 +8,9 @@ import {
   View,
 } from 'react-native';
 import DataTable from '../components/admin/DataTable';
-import adminService from '../services/adminService';
-import { DonationHistory } from '../services/donationService';
+import adminService, { DonationHistory } from '../services/adminService';
 import { colors } from '../styles/theme';
+import useAdminOrientation from '../utils/useAdminOrientation';
 
 export default function DonationsManagement() {
   const [donations, setDonations] = useState<DonationHistory[]>([]);
@@ -17,22 +18,21 @@ export default function DonationsManagement() {
   const [refreshing, setRefreshing] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
 
+  // Ensure landscape orientation
+  useAdminOrientation();
+
   useEffect(() => {
     loadDonations();
   }, []);
 
   const loadDonations = async () => {
     try {
+      // Fetches from /api/payments/all (admin endpoint) via adminService.getAllDonations
       const data = await adminService.getAllDonations();
       setDonations(data);
       
-      // Calculate total amount
-      const total = data.reduce((sum, donation) => {
-        if (donation.status === 'completed') {
-          return sum + donation.amount;
-        }
-        return sum;
-      }, 0);
+      // Calculate total amount (sum of completed donations)
+      const total = data.reduce((sum, donation) => (donation.status === 'completed' ? sum + donation.amount : sum), 0);
       setTotalAmount(total);
     } catch (error) {
       console.error('Error loading donations:', error);

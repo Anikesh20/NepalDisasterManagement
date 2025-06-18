@@ -5,13 +5,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -19,18 +21,27 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, SlideInRight } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  interpolate,
+  SlideInRight,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import ALogoHeader from '../components/ALogoHeader';
+import ChatbotModal from '../components/ChatbotModal';
 import DisasterCard from '../components/DisasterCard';
 import DonationCard from '../components/DonationCard';
 import DonationSuccessModal from '../components/DonationSuccessModal';
 import WeatherModal from '../components/WeatherModal';
-import { logout } from '../services/authService';
 import disasterService, { DisasterData } from '../services/disasterService';
 import realTimeService from '../services/realTimeService';
 import { colors, shadows } from '../styles/theme';
+import { clearAuthState } from '../utils/authState';
 
 const { width } = Dimensions.get('window');
 
@@ -95,6 +106,41 @@ export default function DashboardScreen() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  // Chatbot state
+  const [chatbotModalVisible, setChatbotModalVisible] = useState(false);
+
+  const scrollY = useSharedValue(0);
+  const contentHeight = useSharedValue(0);
+  const scrollViewHeight = useSharedValue(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleDashboardScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    scrollY.value = offsetY;
+  };
+
+  const handleContentSizeChange = (width: number, height: number) => {
+    contentHeight.value = height;
+  };
+
+  const handleLayout = (event: any) => {
+    scrollViewHeight.value = event.nativeEvent.layout.height;
+  };
+
+  const bottomPaddingStyle = useAnimatedStyle(() => {
+    const isAtBottom = scrollY.value + scrollViewHeight.value >= contentHeight.value - 50;
+    const padding = interpolate(
+      scrollY.value,
+      [contentHeight.value - scrollViewHeight.value - 100, contentHeight.value - scrollViewHeight.value],
+      [0, 30],
+      'clamp'
+    );
+    
+    return {
+      paddingBottom: withTiming(padding, { duration: 150 }),
+    };
+  });
 
   const fetchWeatherData = async (latitude: number, longitude: number) => {
     try {
@@ -248,92 +294,88 @@ export default function DashboardScreen() {
 
   const menuItems: MenuItem[] = [
     {
-      title: 'My Profile',
-      icon: 'person',
+      title: 'Profile',
+      icon: 'person-outline',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/profile');
-      }
+      },
     },
     {
       title: 'Emergency Contacts',
-      icon: 'call',
+      icon: 'call-outline',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/emergency-contacts');
-      }
+      },
     },
     {
       title: 'Disaster Map',
-      icon: 'map',
+      icon: 'map-outline',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/disaster-map');
-      }
+      },
     },
     {
       title: 'Report Disaster',
-      icon: 'warning',
-      onPress: () => {
-        setMenuVisible(false);
-        router.push('/(dashboard)/report-disaster');
-      }
+      icon: 'warning-outline',
+      onPress: () => router.push('/(dashboard)/reportDisaster'),
     },
     {
       title: 'Disaster Alerts',
-      icon: 'alert',
+      icon: 'alert-outline',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/alerts');
-      }
+      },
     },
     {
       title: 'Historical Data',
-      icon: 'bar-chart',
+      icon: 'bar-chart-outline',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/historical-data');
-      }
+      },
     },
     {
       title: 'My Reports',
-      icon: 'document-text',
+      icon: 'document-text-outline',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/my-reports');
-      }
+      },
+    },
+    {
+      title: 'My Donations',
+      icon: 'heart-outline',
+      onPress: () => {
+        setMenuVisible(false);
+        router.push('/(dashboard)/my-donations');
+      },
     },
     {
       title: 'Volunteer Status',
-      icon: 'people',
+      icon: 'people-outline',
       onPress: () => {
         setMenuVisible(false);
         router.push('/(dashboard)/volunteer-status');
-      }
-    },
-    {
-      title: 'Settings',
-      icon: 'settings',
-      onPress: () => {
-        setMenuVisible(false);
-        router.push('/settings' as any);
-      }
+      },
     },
     {
       title: 'Logout',
-      icon: 'log-out',
+      icon: 'log-out-outline',
       onPress: async () => {
         setMenuVisible(false);
         try {
-          const { clearAuthState } = await import('../utils/authState');
           await clearAuthState();
-          await logout();
           router.replace('/(auth)/LoginScreen');
         } catch (error) {
-          console.error('Error during logout:', error);
+          console.error('Error logging out:', error);
+          Alert.alert('Error', 'Failed to logout. Please try again.');
         }
-      }
-    }
+      },
+    },
   ];
 
   const stats = [
@@ -358,7 +400,7 @@ export default function DashboardScreen() {
   ];
 
   // Add scroll handler for pagination
-  const handleScroll = (event: any) => {
+  const handleDisasterCardScroll = (event: any) => {
     const contentOffset = event.nativeEvent.contentOffset.x;
     const cardWidth = 296; // card width + margin
     const index = Math.round(contentOffset / cardWidth);
@@ -421,7 +463,7 @@ export default function DashboardScreen() {
           decelerationRate="fast"
           snapToInterval={296} // card width + margin
           snapToAlignment="start"
-          onScroll={handleScroll}
+          onScroll={handleDisasterCardScroll}
           scrollEventThrottle={16}
           pagingEnabled
           bounces={false}
@@ -584,13 +626,22 @@ export default function DashboardScreen() {
       title: 'Report Disaster',
       icon: 'warning-outline',
       color: '#E74C3C',
-      onPress: () => router.push('/(dashboard)/report-disaster'),
+      onPress: () => router.push('/(dashboard)/reportDisaster'),
     },
     {
       title: 'Disaster Alerts',
       icon: 'alert-outline',
       color: '#F39C12',
       onPress: () => router.push('/(dashboard)/alerts'),
+    },
+    {
+      title: 'AI Assistant',
+      icon: 'chatbubble-ellipses-outline',
+      color: '#8E44AD',
+      onPress: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setChatbotModalVisible(true);
+      },
     },
     {
       title: 'Historical Data',
@@ -603,6 +654,12 @@ export default function DashboardScreen() {
       icon: 'document-text-outline',
       color: '#1ABC9C',
       onPress: () => router.push('/(dashboard)/my-reports'),
+    },
+    {
+      title: 'My Donations',
+      icon: 'heart-outline',
+      color: '#FF5A5F',
+      onPress: () => router.push('/(dashboard)/my-donations'),
     },
     {
       title: 'Weather',
@@ -641,13 +698,13 @@ export default function DashboardScreen() {
 
   const getSeverityColor = (severity: DisasterData['severity']) => {
     switch (severity) {
-      case 'CRITICAL':
+      case 'critical':
         return '#FF3B30';
-      case 'HIGH':
+      case 'high':
         return '#FF9500';
-      case 'MEDIUM':
+      case 'medium':
         return '#FFCC00';
-      case 'LOW':
+      case 'low':
         return '#34C759';
       default:
         return colors.primary;
@@ -755,8 +812,18 @@ export default function DashboardScreen() {
   return (
     <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
       <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
         {renderHeader()}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, bottomPaddingStyle]}
+          onScroll={handleDashboardScroll}
+          onContentSizeChange={handleContentSizeChange}
+          onLayout={handleLayout}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.quickActionsHeader}>
             <Text style={styles.sectionHeader}>Quick Actions</Text>
             <TouchableOpacity
@@ -774,6 +841,8 @@ export default function DashboardScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.quickActionsScrollContainer}
+            onScroll={handleDisasterCardScroll}
+            scrollEventThrottle={16}
           >
             {quickActions.map((action: QuickAction, index: number) => (
               <Animated.View
@@ -887,6 +956,24 @@ export default function DashboardScreen() {
             <DonationCard onDonate={handleDonation} />
           </Animated.View>
         </ScrollView>
+        
+        {/* Floating Chatbot Button */}
+        <Animated.View
+          entering={FadeInUp.delay(800).duration(500)}
+          style={styles.floatingChatbotButton}
+        >
+          <TouchableOpacity
+            style={styles.floatingChatbotButtonInner}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setChatbotModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
+        
         {renderMenu()}
         <WeatherModal
           visible={weatherModalVisible}
@@ -894,6 +981,10 @@ export default function DashboardScreen() {
           userLocation={userLocation || undefined}
           onRequestPermission={requestLocationPermission}
           hasPermission={locationPermission}
+        />
+        <ChatbotModal
+          visible={chatbotModalVisible}
+          onClose={() => setChatbotModalVisible(false)}
         />
         <DonationSuccessModal
           visible={donationSuccessVisible}
@@ -910,6 +1001,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   // Header styles
   headerContainer: {
@@ -1616,5 +1715,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: -4,
     opacity: 0.9,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  floatingChatbotButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.medium,
+  },
+  floatingChatbotButtonInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

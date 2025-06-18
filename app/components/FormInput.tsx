@@ -1,21 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    StyleProp,
-    StyleSheet,
-    Text,
-    TextInput,
-    TextInputProps,
-    TextStyle,
-    TouchableOpacity,
-    View,
-    ViewStyle,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native';
 import Animated, {
-    interpolateColor,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { colors, shadows, typography } from '../styles/theme-simple';
 
@@ -58,12 +58,14 @@ const FormInput: React.FC<FormInputProps> = ({
   // Animation values
   const focusAnim = useSharedValue(0);
 
-  // Update animation value when focus changes - without useEffect
-  if (isFocused) {
-    focusAnim.value = withTiming(1, { duration: 150 });
-  } else {
-    focusAnim.value = withTiming(0, { duration: 150 });
-  }
+  // Update animation value when focus changes - moved to useEffect
+  useEffect(() => {
+    if (isFocused) {
+      focusAnim.value = withTiming(1, { duration: 150 });
+    } else {
+      focusAnim.value = withTiming(0, { duration: 150 });
+    }
+  }, [isFocused, focusAnim]);
 
   // Animated styles
   const borderStyle = useAnimatedStyle(() => {

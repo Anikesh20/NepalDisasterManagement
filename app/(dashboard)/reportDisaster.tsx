@@ -3,20 +3,21 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { DisasterType, getDisasterColor, getDisasterIcon, SeverityLevel } from '../services/disasterService';
 import reportService, { DisasterReport } from '../services/reportService';
 import { colors, shadows } from '../styles/theme';
@@ -63,21 +64,86 @@ export default function ReportDisasterScreen() {
   const requestLocationPermission = async () => {
     try {
       setLocationLoading(true);
-      const { status } = await Location.requestForegroundPermissionsAsync();
 
+      // First check if location services are enabled
+      const locationEnabled = await Location.hasServicesEnabledAsync();
+      if (!locationEnabled) {
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable location services in your device settings to use this feature.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
       if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
-        setFormData(prev => ({
-          ...prev,
-          coordinates: {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          },
-        }));
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          
+          setFormData(prev => ({
+            ...prev,
+            coordinates: {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            },
+          }));
+        } catch (locationError) {
+          console.error('Error getting location:', locationError);
+          Alert.alert(
+            'Location Error',
+            'Failed to get your current location. Please check your location settings and try again.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Try Again', onPress: requestLocationPermission }
+            ]
+          );
+        }
+      } else if (status === 'denied') {
+        Alert.alert(
+          'Location Permission Required',
+          'Please enable location access in your device settings to use this feature.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }
+            }
+          ]
+        );
       }
     } catch (error) {
-      console.error('Error getting location:', error);
-      Alert.alert('Error', 'Failed to get your location. Please try again.');
+      console.error('Error requesting location permission:', error);
+      Alert.alert(
+        'Error',
+        'An error occurred while requesting location permission. Please try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: requestLocationPermission }
+        ]
+      );
     } finally {
       setLocationLoading(false);
     }
@@ -127,7 +193,9 @@ export default function ReportDisasterScreen() {
       // Upload images if any
       let uploadedImageUrls: string[] = [];
       if (images.length > 0) {
-        uploadedImageUrls = await reportService.uploadReportImages(images, setUploadProgress);
+        // For now, we'll use the local URIs directly
+        // In a real implementation, you would upload to a server
+        uploadedImageUrls = images;
       }
 
       // Submit the report
@@ -349,7 +417,6 @@ export default function ReportDisasterScreen() {
       <View style={styles.mapContainer}>
         <MapView
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
           initialRegion={{
             latitude: formData.coordinates.latitude,
             longitude: formData.coordinates.longitude,

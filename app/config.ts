@@ -1,15 +1,17 @@
 export const API_CONFIG = {
   development: {
-    baseUrl: 'http://localhost:3000',
+    baseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000',
+  },
+  preview: {
+    baseUrl: process.env.EXPO_PUBLIC_API_URL || 'https://nepaldisastermanagement-preview.up.railway.app',
   },
   production: {
-    // Replace with your Railway.app domain after deployment
-    baseUrl: 'https://nepal-disaster-management-backend.railway.app',
+    baseUrl: process.env.EXPO_PUBLIC_API_URL || 'https://nepaldisastermanagement-production.up.railway.app',
   },
 };
 
 // Get the current environment
-const ENV = __DEV__ ? 'development' : 'production';
+const ENV = process.env.NODE_ENV || 'development';
 
 // Export the current configuration
 export const API_URL = API_CONFIG[ENV].baseUrl;
@@ -17,7 +19,8 @@ export const API_URL = API_CONFIG[ENV].baseUrl;
 // Add a default export to satisfy expo-router
 const config = {
   API_CONFIG,
-  API_URL
+  API_URL,
+  ENV
 };
 
 export default config;

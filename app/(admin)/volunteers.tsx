@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -9,11 +8,15 @@ import {
 import DataTable from '../components/admin/DataTable';
 import adminService, { VolunteerData } from '../services/adminService';
 import { colors } from '../styles/theme';
+import useAdminOrientation from '../utils/useAdminOrientation';
 
 export default function VolunteersManagement() {
   const [volunteers, setVolunteers] = useState<VolunteerData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Ensure landscape orientation
+  useAdminOrientation();
 
   useEffect(() => {
     loadVolunteers();

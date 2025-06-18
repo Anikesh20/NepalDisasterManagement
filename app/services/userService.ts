@@ -174,18 +174,6 @@ export const updateUserProfile = async (userId: string, userData: any) => {
   }
 };
 
-export const testBackendConnection = async () => {
-  try {
-    const response = await fetch(`${API_URL}/health`);
-    const data = await response.json();
-    console.log('Backend connection test:', data);
-    return data.status === 'ok';
-  } catch (error) {
-    console.error('Backend connection test failed:', error);
-    return false;
-  }
-};
-
 // Create a default export object with all the functions
 const userService = {
   getUserProfile,

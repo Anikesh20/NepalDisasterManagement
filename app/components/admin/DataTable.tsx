@@ -35,7 +35,12 @@ interface DataTableProps {
     label: string;
     onPress: (item: any) => void;
     color?: string;
-  }[];
+  }[] | ((item: any) => {
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    label: string;
+    onPress: (item: any) => void;
+    color?: string;
+  }[]);
 }
 
 export default function DataTable({
@@ -113,48 +118,53 @@ export default function DataTable({
           )}
         </TouchableOpacity>
       ))}
-      {actions.length > 0 && <View style={styles.actionsHeader} />}
+      {actions && <View style={styles.actionsHeader} />}
     </View>
   );
 
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.row}
-      onPress={() => onRowPress && onRowPress(item)}
-      disabled={!onRowPress}
-    >
-      {columns.map(column => (
-        <View
-          key={column.id}
-          style={[
-            styles.cell,
-            column.width ? { width: column.width } : { flex: 1 },
-          ]}
-        >
-          {column.render ? (
-            column.render(item)
-          ) : (
-            <Text style={styles.cellText} numberOfLines={1}>
-              {item[column.id]?.toString() || '-'}
-            </Text>
-          )}
-        </View>
-      ))}
-      {actions.length > 0 && (
-        <View style={styles.actionsCell}>
-          {actions.map((action, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.actionButton, { backgroundColor: action.color || colors.primary }]}
-              onPress={() => action.onPress(item)}
-            >
-              <Ionicons name={action.icon} size={16} color="#fff" />
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: { item: any }) => {
+    // Get actions for this specific item
+    const itemActions = typeof actions === 'function' ? actions(item) : actions;
+    
+    return (
+      <TouchableOpacity
+        style={styles.row}
+        onPress={() => onRowPress && onRowPress(item)}
+        disabled={!onRowPress}
+      >
+        {columns.map(column => (
+          <View
+            key={column.id}
+            style={[
+              styles.cell,
+              column.width ? { width: column.width } : { flex: 1 },
+            ]}
+          >
+            {column.render ? (
+              column.render(item)
+            ) : (
+              <Text style={styles.cellText} numberOfLines={1}>
+                {item[column.id]?.toString() || '-'}
+              </Text>
+            )}
+          </View>
+        ))}
+        {itemActions && itemActions.length > 0 && (
+          <View style={styles.actionsCell}>
+            {itemActions.map((action, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.actionButton, { backgroundColor: action.color || colors.primary }]}
+                onPress={() => action.onPress(item)}
+              >
+                <Ionicons name={action.icon} size={16} color="#fff" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>

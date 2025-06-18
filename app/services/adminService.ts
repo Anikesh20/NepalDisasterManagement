@@ -1,8 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from './config';
+import { API_BASE_URL } from '../config/api';
 import { DisasterData, DisasterType, SeverityLevel } from './disasterService';
 import { DonationHistory } from './donationService';
 import { DisasterReport } from './reportService';
+
+// Use the configured API base URL
+const ADMIN_API_URL = `${API_BASE_URL}/api`;
 
 // Mock user data for admin panel
 export interface UserData {
@@ -206,31 +209,105 @@ const mockDonations: DonationHistory[] = [
 
 // Get admin dashboard statistics
 export const getAdminStats = async (): Promise<AdminStats> => {
-  // In a real implementation, this would fetch from the API
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  return {
-    totalUsers: mockUsers.length,
-    totalVolunteers: mockVolunteers.length,
-    totalDisasters: mockDisasters.length,
-    activeDisasters: mockDisasters.filter(d => d.isActive).length,
-    totalReports: mockReports.length,
-    pendingReports: mockReports.filter(r => r.status === 'pending').length,
-    totalDonations: mockDonations.length,
-    totalDonationAmount: mockDonations.reduce((sum, donation) => sum + donation.amount, 0),
-  };
+  try {
+    console.log('[adminService] Getting admin token...');
+    // Get the admin token
+    const adminToken = await AsyncStorage.getItem('adminToken');
+    console.log('[adminService] Admin token exists:', !!adminToken);
+    
+    if (!adminToken) {
+      throw new Error('Admin authentication required');
+    }
+
+    console.log('[adminService] Fetching admin stats from:', `${ADMIN_API_URL}/stats`);
+    // Fetch stats from the backend API
+    const response = await fetch(`${ADMIN_API_URL}/stats`, {
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    console.log('[adminService] Response status:', response.status);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[adminService] Error response:', errorData);
+      throw new Error(errorData.error || 'Failed to fetch admin stats');
+    }
+
+    const data = await response.json();
+    console.log('[adminService] Received stats data:', data);
+    
+    return {
+      totalUsers: data.totalUsers || 0,
+      totalVolunteers: data.totalVolunteers || 0,
+      totalDisasters: data.totalDisasters || 0,
+      activeDisasters: data.activeDisasters || 0,
+      totalReports: data.totalReports || 0,
+      pendingReports: data.pendingReports || 0,
+      totalDonations: data.totalDonations || 0,
+      totalDonationAmount: data.totalDonationAmount || 0,
+    };
+  } catch (error) {
+    console.error('[adminService] Error in getAdminStats:', error);
+    throw error;
+  }
 };
 
 // Get all users
 export const getAllUsers = async (): Promise<UserData[]> => {
-  // In a real implementation, this would fetch from the API
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  return [...mockUsers];
+  try {
+    console.log('[adminService] Getting admin token...');
+    // Get the admin token
+    const adminToken = await AsyncStorage.getItem('adminToken');
+    console.log('[adminService] Admin token exists:', !!adminToken);
+    
+    if (!adminToken) {
+      throw new Error('Admin authentication required');
+    }
+
+    console.log('[adminService] Fetching users from:', `${ADMIN_API_URL}/users`);
+    // Fetch users from the backend API
+    const response = await fetch(`${ADMIN_API_URL}/users`, {
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    console.log('[adminService] Response status:', response.status);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[adminService] Error response:', errorData);
+      throw new Error(errorData.error || 'Failed to fetch users');
+    }
+
+    const data = await response.json();
+    console.log('[adminService] Received users data:', data);
+    
+    if (!data.users || !Array.isArray(data.users)) {
+      console.error('[adminService] Invalid response format:', data);
+      throw new Error('Invalid response format from server');
+    }
+
+    const mappedUsers = data.users.map((user: any) => ({
+      id: user.id.toString(),
+      email: user.email,
+      username: user.username,
+      full_name: user.full_name,
+      phone_number: user.phone_number,
+      district: user.district,
+      blood_group: user.blood_group,
+      is_volunteer: user.is_volunteer,
+      created_at: user.created_at
+    }));
+    
+    console.log('[adminService] Mapped users:', mappedUsers);
+    return mappedUsers;
+  } catch (error) {
+    console.error('[adminService] Error in getAllUsers:', error);
+    throw error;
+  }
 };
 
 // Get all volunteers
@@ -255,22 +332,105 @@ export const getAllDisasters = async (): Promise<DisasterData[]> => {
 
 // Get all reports
 export const getAllReports = async (): Promise<DisasterReport[]> => {
-  // In a real implementation, this would fetch from the API
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  return [...mockReports];
+  try {
+    const token = await AsyncStorage.getItem('adminToken');
+    if (!token) {
+      throw new Error('Admin authentication required');
+    }
+
+    const response = await fetch(`${ADMIN_API_URL}/reports/admin`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch reports');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    throw error;
+  }
 };
 
-// Get all donations
+// Update report status
+export const updateReportStatus = async (reportId: string, status: 'pending' | 'verified' | 'rejected'): Promise<DisasterReport> => {
+  try {
+    const token = await AsyncStorage.getItem('adminToken');
+    if (!token) {
+      throw new Error('Admin authentication required');
+    }
+
+    const response = await fetch(`${ADMIN_API_URL}/reports/${reportId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update report status');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating report status:', error);
+    throw error;
+  }
+};
+
+// Get all donations (admin) – updated to fetch from /api/payments/all
 export const getAllDonations = async (): Promise<DonationHistory[]> => {
-  // In a real implementation, this would fetch from the API
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  return [...mockDonations];
+  try {
+    console.log('[adminService] Getting admin token...');
+    const adminToken = await AsyncStorage.getItem('adminToken');
+    console.log('[adminService] Admin token exists:', !!adminToken);
+    
+    if (!adminToken) {
+      throw new Error("Admin authentication required");
+    }
+
+    const url = `${API_BASE_URL}/api/payments/all`;
+    console.log('[adminService] Fetching donations from:', url);
+    
+    const response = await fetch(url, {
+      headers: { 
+        "Authorization": `Bearer ${adminToken}`, 
+        "Accept": "application/json" 
+      }
+    });
+    
+    console.log('[adminService] Response status:', response.status);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[adminService] Error response:', errorData);
+      throw new Error(errorData.error || "Failed to fetch all payments");
+    }
+    
+    const rows = await response.json();
+    console.log('[adminService] Received payment rows:', rows);
+    
+    // Map DB rows to DonationHistory format
+    const donations: DonationHistory[] = rows.map((row: any) => ({
+      id: row.id,
+      amount: row.amount,
+      date: new Date(row.created_at).toISOString().split("T")[0],
+      status: (row.status === "succeeded" ? "completed" : (row.status === "pending" ? "pending" : "failed")),
+      campaign: "General Relief Fund" // (or use a dynamic value if available)
+    }));
+    
+    console.log('[adminService] Mapped donations:', donations);
+    return donations;
+  } catch (error) {
+    console.error("[adminService] Error in getAllDonations:", error);
+    throw error;
+  }
 };
 
 const adminService = {
@@ -279,6 +439,7 @@ const adminService = {
   getAllVolunteers,
   getAllDisasters,
   getAllReports,
+  updateReportStatus,
   getAllDonations,
 };
 

@@ -1,21 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import DataTable from '../components/admin/DataTable';
 import adminService from '../services/adminService';
 import { getDisasterIcon } from '../services/disasterService';
 import { DisasterReport, getReportStatusColor, getReportStatusText } from '../services/reportService';
 import { colors } from '../styles/theme';
+import useAdminOrientation from '../utils/useAdminOrientation';
 
 export default function ReportsManagement() {
   const [reports, setReports] = useState<DisasterReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Ensure landscape orientation
+  useAdminOrientation();
 
   useEffect(() => {
     loadReports();
@@ -206,7 +210,7 @@ export default function ReportsManagement() {
           searchKeys={['title', 'location', 'district', 'type']}
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          actions={reports.length > 0 ? getActions(reports[0]) : []}
+          actions={getActions}
           emptyMessage="No reports found"
         />
       </View>

@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ExpoSplashScreen from 'expo-splash-screen';
-import React, { useEffect, useRef } from 'react';
-import { Animated, Image, Platform, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
 
 // Prevent the splash screen from auto-hiding
 ExpoSplashScreen.preventAutoHideAsync().catch(() => {
@@ -18,23 +18,37 @@ interface SplashScreenProps {
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
   console.log('[SplashScreen] Component rendering');
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [initError, setInitError] = useState<Error | null>(null);
 
   useEffect(() => {
     console.log('[SplashScreen] Component mounted');
     let isMounted = true;
     let animationTimeout: NodeJS.Timeout;
+    let initTimeout: NodeJS.Timeout;
 
-    // Hide the native splash screen and configure system UI
     const initialize = async () => {
       try {
         console.log('[SplashScreen] Starting initialization...');
 
-        // Start animations immediately
-        console.log('[SplashScreen] Starting animations...');
+        // Hide the native splash screen first
+        try {
+          await ExpoSplashScreen.hideAsync();
+          console.log('[SplashScreen] Native splash screen hidden successfully');
+        } catch (error) {
+          console.error('[SplashScreen] Error hiding native splash screen:', error);
+          // Continue even if hiding fails
+        }
+
+        // Wait for native bridge to be ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (!isMounted) return;
+
+        // Start animations
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 1,
@@ -54,56 +68,40 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
         ]).start(() => {
           console.log('[SplashScreen] Animations completed');
           if (isMounted) {
-            // Add a small delay before completing to ensure smooth transition
-            animationTimeout = setTimeout(() => {
-              if (isMounted) {
+            // Configure system UI after animations
+            initTimeout = setTimeout(async () => {
+              if (!isMounted) return;
+
+              try {
+                if (Platform.OS === 'android') {
+                  const systemUIManager = await import('../utils/systemUIManager');
+                  await systemUIManager.default.hideNavigationBar();
+                  await systemUIManager.default.setImmersiveMode();
+                }
+                
+                setIsInitialized(true);
+                onAnimationComplete();
+              } catch (error) {
+                console.error('[SplashScreen] Error during system UI configuration:', error);
+                // Continue even if system UI configuration fails
+                setIsInitialized(true);
                 onAnimationComplete();
               }
             }, 200);
           }
         });
 
-        // Hide the native splash screen in parallel
-        console.log('[SplashScreen] Attempting to hide native splash screen...');
-        try {
-          await ExpoSplashScreen.hideAsync();
-          console.log('[SplashScreen] Native splash screen hidden successfully');
-        } catch (error) {
-          console.error('[SplashScreen] Error hiding native splash screen:', error);
-          // Continue even if hiding fails
-        }
-
-        if (!isMounted) {
-          console.log('[SplashScreen] Component unmounted during initialization');
-          return;
-        }
-
-        // Hide navigation bar on Android
-        if (Platform.OS === 'android') {
-          try {
-            console.log('[SplashScreen] Configuring Android UI...');
-            // Import our SystemUIManager
-            const systemUIManager = await import('../utils/systemUIManager');
-
-            // Hide navigation bar and set immersive mode
-            await systemUIManager.default.hideNavigationBar();
-            await systemUIManager.default.setImmersiveMode();
-            console.log('[SplashScreen] Android UI configured successfully');
-          } catch (error) {
-            console.error('[SplashScreen] Error configuring Android UI:', error);
-            // Continue even if UI configuration fails
-          }
-        }
-
       } catch (error) {
         console.error('[SplashScreen] Error during initialization:', error);
-        // If there's an error, we should still try to complete the animation
         if (isMounted) {
+          setInitError(error as Error);
+          setIsInitialized(true);
           onAnimationComplete();
         }
       }
     };
 
+    // Start initialization
     initialize();
 
     return () => {
@@ -112,8 +110,20 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
       if (animationTimeout) {
         clearTimeout(animationTimeout);
       }
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
     };
   }, []);
+
+  // If there was an initialization error, show a fallback UI
+  if (initError) {
+    return (
+      <View style={[styles.container, { backgroundColor: '#fff' }]}>
+        <Text style={{ color: '#000', fontSize: 16 }}>Loading...</Text>
+      </View>
+    );
+  }
 
   // Interpolate rotation value
   const spin = rotateAnim.interpolate({

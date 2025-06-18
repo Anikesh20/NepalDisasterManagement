@@ -113,9 +113,13 @@ router.post('/login', async (req, res) => {
 
         console.log('Login successful for user:', email);
 
-        // Generate JWT token
+        // Generate JWT token with admin status
         const token = jwt.sign(
-            { userId: user.id, email: user.email },
+            { 
+                userId: user.id, 
+                email: user.email,
+                isAdmin: user.is_admin 
+            },
             'nepal_disaster_management_secret_key_2024',
             { expiresIn: '24h' }
         );
@@ -127,7 +131,8 @@ router.post('/login', async (req, res) => {
                 id: user.id,
                 email: user.email,
                 username: user.username,
-                full_name: user.full_name
+                full_name: user.full_name,
+                is_admin: user.is_admin
             }
         });
     } catch (error) {

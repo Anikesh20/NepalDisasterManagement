@@ -20,6 +20,10 @@ export interface DonationHistory {
   date: string;
   status: 'completed' | 'pending' | 'failed';
   campaign: string;
+  payment_intent_id: string;
+  payment_method: string;
+  currency: string;
+  created_at: string;
 }
 
 // Mock donation history data
@@ -29,14 +33,22 @@ const mockDonationHistory: DonationHistory[] = [
     amount: 500,
     date: '2023-05-15',
     status: 'completed',
-    campaign: 'Earthquake Relief Fund'
+    campaign: 'Earthquake Relief Fund',
+    payment_intent_id: 'pi_1234567890',
+    payment_method: 'card',
+    currency: 'npr',
+    created_at: '2023-05-15T10:00:00'
   },
   {
     id: 'don-002',
     amount: 1000,
     date: '2023-06-22',
     status: 'completed',
-    campaign: 'Flood Relief Fund'
+    campaign: 'Flood Relief Fund',
+    payment_intent_id: 'pi_1234567891',
+    payment_method: 'card',
+    currency: 'npr',
+    created_at: '2023-06-22T10:00:00'
   }
 ];
 
@@ -124,15 +136,31 @@ class DonationService {
           'Authorization': `Bearer ${await authService.getToken()}`
         }
       });
-
+      console.log("donationService getDonationHistory response status:", response.status);
       if (!response.ok) {
-        throw new Error('Failed to fetch donation history');
+        const errorText = await response.text();
+        console.error("donationService getDonationHistory error response:", errorText);
+        throw new Error("Failed to fetch donation history: " + errorText);
       }
-
-      return await response.json();
+      const data = await response.json();
+      console.log("donationService getDonationHistory response data:", data);
+      
+      // Map the data to match DonationHistory interface with actual payment details
+      return data.map((payment: any) => ({
+        id: payment.id.toString(),
+        amount: payment.amount,
+        date: new Date(payment.created_at).toISOString().split('T')[0],
+        status: payment.status === 'succeeded' ? 'completed' : 
+                payment.status === 'pending' ? 'pending' : 'failed',
+        campaign: payment.campaign || 'General Relief Fund',
+        payment_intent_id: payment.payment_intent_id,
+        payment_method: payment.payment_method || 'card',
+        currency: payment.currency || 'npr',
+        created_at: payment.created_at
+      }));
     } catch (error) {
-      console.error('Error fetching donation history:', error);
-      return [];
+      console.error("donationService getDonationHistory error:", error);
+      throw error;
     }
   }
 
@@ -140,14 +168,17 @@ class DonationService {
   async getTotalDonated(): Promise<number> {
     try {
       const history = await this.getDonationHistory();
-      return history.reduce((total, donation) => {
-        if (donation.status === 'completed') {
-          return total + donation.amount;
+      console.log("donationService getTotalDonated history:", history);
+      const total = history.reduce((total, donation) => {
+        if (donation.status === "completed") {
+           return total + donation.amount;
         }
         return total;
       }, 0);
+      console.log("donationService getTotalDonated computed total:", total);
+      return total;
     } catch (error) {
-      console.error('Error calculating total donations:', error);
+      console.error("donationService getTotalDonated error:", error);
       return 0;
     }
   }

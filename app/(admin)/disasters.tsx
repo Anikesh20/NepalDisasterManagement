@@ -1,20 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import DataTable from '../components/admin/DataTable';
 import adminService from '../services/adminService';
 import { DisasterData, getDisasterIcon, getSeverityColor } from '../services/disasterService';
 import { colors } from '../styles/theme';
+import useAdminOrientation from '../utils/useAdminOrientation';
 
 export default function DisastersManagement() {
   const [disasters, setDisasters] = useState<DisasterData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Ensure landscape orientation
+  useAdminOrientation();
 
   useEffect(() => {
     loadDisasters();

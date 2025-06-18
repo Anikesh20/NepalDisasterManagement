@@ -3,7 +3,7 @@
     "name": "NepalDisasterManagement",
     "slug": "NepalDisasterManagement",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/images/icon.png",
     "scheme": "nepaldisastermanagement",
     "userInterfaceStyle": "automatic",
@@ -41,7 +41,8 @@
         }
       ],
       "expo-system-ui",
-      "expo-navigation-bar"
+      "expo-navigation-bar",
+      "expo-screen-orientation"
     ],
     "experiments": {
       "typedRoutes": true
@@ -51,6 +52,15 @@
       "eas": {
         "projectId": "d115e6e8-100f-4e40-aad7-aea97086f74f"
       }
-    }
+    },
+    "cli": {
+      "appVersionSource": "remote"
+    },
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/d115e6e8-100f-4e40-aad7-aea97086f74f"
+    },
+    "runtimeVersion": "1.0.0"
   }
 }

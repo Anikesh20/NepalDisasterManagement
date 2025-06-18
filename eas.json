@@ -7,13 +7,16 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "gradleCommand": ":app:assembleDebug"
+        "gradleCommand": ":app:assembleDebug",
+        "buildType": "apk"
       },
       "ios": {
         "buildConfiguration": "Debug"
       },
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:3000",
+        "EXPO_PUBLIC_BACKEND_URL": "http://10.0.2.2:3000"
       }
     },
     "preview": {
@@ -22,32 +25,24 @@
         "buildType": "apk"
       },
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "preview",
+        "EXPO_PUBLIC_API_URL": "https://nepaldisastermanagement-preview.up.railway.app",
+        "EXPO_PUBLIC_BACKEND_URL": "https://nepaldisastermanagement-preview.up.railway.app"
       }
     },
     "production": {
       "android": {
-        "buildType": "app-bundle"
-      },
-      "ios": {
-        "enterpriseProvisioning": "universal"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://nepaldisastermanagement-production.up.railway.app",
+        "EXPO_PUBLIC_BACKEND_URL": "https://nepaldisastermanagement-production.up.railway.app"
       }
     }
   },
   "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./path-to-your-service-account.json",
-        "track": "production"
-      },
-      "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
-      }
-    }
+    "production": {}
   }
 } 

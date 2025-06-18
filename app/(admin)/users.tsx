@@ -1,20 +1,22 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   StyleSheet,
   Text,
-  TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import DataTable from '../components/admin/DataTable';
 import adminService, { UserData } from '../services/adminService';
 import { colors } from '../styles/theme';
+import useAdminOrientation from '../utils/useAdminOrientation';
 
 export default function UsersManagement() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Ensure landscape orientation
+  useAdminOrientation();
 
   useEffect(() => {
     loadUsers();
@@ -22,11 +24,20 @@ export default function UsersManagement() {
 
   const loadUsers = async () => {
     try {
+      console.log('[UsersManagement] Attempting to load users...');
       const data = await adminService.getAllUsers();
+      console.log('[UsersManagement] Users loaded successfully:', data);
       setUsers(data);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      Alert.alert('Error', 'Failed to load users');
+    } catch (error: any) {
+      console.error('[UsersManagement] Error loading users:', error);
+      console.error('[UsersManagement] Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+      Alert.alert(
+        'Error Loading Users',
+        error.message || 'Failed to load users. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }

@@ -33,11 +33,31 @@ export default function SettingsScreen() {
   const checkBiometricAvailability = async () => {
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
+      if (!compatible) {
+        console.log('Biometric hardware not available');
+        setIsBiometricAvailable(false);
+        setIsBiometricEnabled(false);
+        await AsyncStorage.setItem('biometricEnabled', 'false');
+        return;
+      }
+
       const enrolled = await LocalAuthentication.isEnrolledAsync();
-      setIsBiometricAvailable(compatible && enrolled);
+      if (!enrolled) {
+        console.log('No biometrics enrolled');
+        setIsBiometricAvailable(false);
+        setIsBiometricEnabled(false);
+        await AsyncStorage.setItem('biometricEnabled', 'false');
+        return;
+      }
+
+      setIsBiometricAvailable(true);
+      const biometricEnabled = await AsyncStorage.getItem('biometricEnabled');
+      setIsBiometricEnabled(biometricEnabled === 'true');
     } catch (error) {
       console.error('Error checking biometric availability:', error);
       setIsBiometricAvailable(false);
+      setIsBiometricEnabled(false);
+      await AsyncStorage.setItem('biometricEnabled', 'false');
     }
   };
 
@@ -64,19 +84,34 @@ export default function SettingsScreen() {
         const result = await LocalAuthentication.authenticateAsync({
           promptMessage: 'Authenticate to enable biometric login',
           fallbackLabel: 'Use password',
+          disableDeviceFallback: false,
+          cancelLabel: 'Cancel'
         });
 
         if (!result.success) {
+          Alert.alert('Authentication Failed', 'Biometric authentication failed. Please try again.');
           return;
         }
+
+        // Clear any existing stored credentials
+        await AsyncStorage.removeItem('lastLoginEmail');
+        await AsyncStorage.removeItem('lastLoginPassword');
       }
 
       await AsyncStorage.setItem('biometricEnabled', String(value));
       setIsBiometricEnabled(value);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      if (!value) {
+        // Clear stored credentials when disabling biometric
+        await AsyncStorage.removeItem('lastLoginEmail');
+        await AsyncStorage.removeItem('lastLoginPassword');
+      }
     } catch (error) {
       console.error('Error toggling biometric:', error);
-      Alert.alert('Error', 'Failed to update biometric settings');
+      Alert.alert('Error', 'Failed to update biometric settings. Please try again.');
+      // Revert the toggle state
+      setIsBiometricEnabled(!value);
     }
   };
 

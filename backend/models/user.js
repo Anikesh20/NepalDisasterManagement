@@ -13,8 +13,11 @@ class User {
             current_location,
             blood_group,
             password,
-            is_volunteer
+            is_volunteer,
+            is_admin = false // Default to false for regular users
         } = userData;
+
+        let adminFlag = is_admin;
 
         console.log('Creating user with data:', { ...userData, password: '***' });
         console.log('Username value:', username);
@@ -39,14 +42,24 @@ class User {
                     formattedLocation = `(${lat},${lng})`;
                 }
 
+                // Check if this is the admin account
+                if (email === 'admin@gmail.com') {
+                    // Verify if admin already exists
+                    const adminExists = await client.query('SELECT id FROM users WHERE is_admin = true');
+                    if (adminExists.rows.length > 0) {
+                        throw new Error('Admin account already exists');
+                    }
+                    adminFlag = true;
+                }
+
                 // Insert user
                 const query = {
                     text: `INSERT INTO users (
                         email, username, full_name, phone_number, 
                         district, current_location, blood_group, 
-                        password, is_volunteer
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                    RETURNING id, email, username, full_name`,
+                        password, is_volunteer, is_admin
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    RETURNING id, email, username, full_name, is_admin`,
                     values: [
                         email, 
                         username, 
@@ -56,7 +69,8 @@ class User {
                         formattedLocation, 
                         blood_group,
                         hashedPassword, 
-                        is_volunteer
+                        is_volunteer,
+                        adminFlag
                     ]
                 };
 

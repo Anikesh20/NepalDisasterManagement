@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { colors } from '../styles/theme';
+import OrientationManager from '../utils/orientationManager';
 
 export default function AdminLayout() {
   const router = useRouter();
@@ -17,6 +18,39 @@ export default function AdminLayout() {
 
   useEffect(() => {
     checkAdminAuth();
+  }, []);
+
+  useEffect(() => {
+    // Force landscape orientation immediately when entering admin area
+    const forceLandscape = async () => {
+      try {
+        console.log('Admin Layout: Setting landscape orientation');
+        if (OrientationManager.isOrientationSupported()) {
+          await OrientationManager.setLandscapeOrientation();
+          console.log('Admin Layout: Landscape orientation set successfully');
+        }
+      } catch (error) {
+        console.error('Admin Layout: Error setting landscape orientation:', error);
+      }
+    };
+
+    forceLandscape();
+
+    // Cleanup function - only restore portrait when leaving admin area completely
+    return () => {
+      const restorePortrait = async () => {
+        try {
+          console.log('Admin Layout: Restoring portrait orientation');
+          if (OrientationManager.isOrientationSupported()) {
+            await OrientationManager.setPortraitOrientation();
+            console.log('Admin Layout: Portrait orientation restored');
+          }
+        } catch (error) {
+          console.error('Admin Layout: Error restoring portrait orientation:', error);
+        }
+      };
+      restorePortrait();
+    };
   }, []);
 
   const checkAdminAuth = async () => {
@@ -48,6 +82,11 @@ export default function AdminLayout() {
       // Clear all authentication state
       await clearAuthState();
 
+      // Restore portrait orientation before navigating away
+      if (OrientationManager.isOrientationSupported()) {
+        await OrientationManager.setPortraitOrientation();
+      }
+
       // Navigate to login screen
       router.replace('/(auth)/LoginScreen');
     } catch (error) {
@@ -62,8 +101,6 @@ export default function AdminLayout() {
       </View>
     );
   }
-
-
 
   return (
     <>

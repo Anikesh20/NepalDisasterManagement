@@ -120,7 +120,7 @@ export default function MyReportsScreen() {
           <Text style={styles.emptyText}>You haven't submitted any reports yet</Text>
           <TouchableOpacity
             style={styles.reportButton}
-            onPress={() => router.push('/(dashboard)/report-disaster')}
+            onPress={() => router.push('/(dashboard)/reportDisaster')}
           >
             <Text style={styles.reportButtonText}>Report a Disaster</Text>
           </TouchableOpacity>

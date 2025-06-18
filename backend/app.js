@@ -10,10 +10,12 @@ app.use(express.json());
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const paymentsRoutes = require('./routes/payments').default;
+const adminRoutes = require('./routes/admin');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api', adminRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

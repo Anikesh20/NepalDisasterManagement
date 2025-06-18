@@ -1,7 +1,51 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const db = require('../db');
+
+// Get all users (admin only)
+router.get('/', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        console.log('[Users Route] Getting all users, admin ID:', req.user.userId);
+        
+        const result = await db.query(
+            'SELECT id, email, username, full_name, phone_number, district, blood_group, is_volunteer, is_admin, created_at FROM users ORDER BY created_at DESC'
+        );
+        
+        console.log('[Users Route] Query result:', {
+            rowCount: result.rowCount,
+            hasRows: result.rows.length > 0
+        });
+        
+        // Remove sensitive information
+        const users = result.rows.map(user => ({
+            ...user,
+            password: undefined
+        }));
+        
+        console.log('[Users Route] Sending response with users:', {
+            count: users.length,
+            firstUser: users[0] ? {
+                id: users[0].id,
+                email: users[0].email,
+                username: users[0].username
+            } : null
+        });
+        
+        res.json({ users });
+    } catch (error) {
+        console.error('[Users Route] Error fetching users:', error);
+        console.error('[Users Route] Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
+        res.status(500).json({ 
+            error: 'Internal server error',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
 
 // Get user profile
 router.get('/:userId', authenticateToken, async (req, res) => {

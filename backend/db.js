@@ -32,6 +32,12 @@ async function resetDatabase() {
     }
 }
 
+// Get a client from the pool for transactions
+async function getClient() {
+    const client = await pool.connect();
+    return client;
+}
+
 module.exports = {
     query: async (text, params) => {
         try {
@@ -45,5 +51,6 @@ module.exports = {
         }
     },
     pool: pool,
-    resetDatabase: resetDatabase  // Renamed from initializeDatabase to make its purpose clearer
+    resetDatabase: resetDatabase,
+    getClient: getClient  // Add the getClient function to exports
 }; 

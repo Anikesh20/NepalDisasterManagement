@@ -30,7 +30,7 @@ export default function AllActionsScreen() {
       icon: 'warning-outline' as const,
       color: '#E74C3C',
       description: 'Report a new disaster in your area',
-      onPress: () => router.push('/(dashboard)/report-disaster'),
+      onPress: () => router.push('/(dashboard)/reportDisaster'),
     },
     {
       title: 'Disaster Alerts',
@@ -52,6 +52,13 @@ export default function AllActionsScreen() {
       color: '#1ABC9C',
       description: 'View your submitted disaster reports',
       onPress: () => router.push('/(dashboard)/my-reports'),
+    },
+    {
+      title: 'My Donations',
+      icon: 'heart-outline' as const,
+      color: '#FF5A5F',
+      description: 'See your donation history and details',
+      onPress: () => router.push('/(dashboard)/my-donations'),
     },
     {
       title: 'Weather',

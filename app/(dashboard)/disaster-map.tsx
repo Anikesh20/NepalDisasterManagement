@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Callout, Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { Callout, Marker, Region } from 'react-native-maps';
 import disasterService, { DisasterData, DisasterType, getDisasterColor, getDisasterIcon } from '../services/disasterService';
 import { colors, shadows } from '../styles/theme';
 
@@ -175,7 +175,6 @@ export default function DisasterMapScreen() {
           <MapView
             ref={mapRef}
             style={styles.map}
-            provider={PROVIDER_GOOGLE}
             initialRegion={INITIAL_REGION}
             showsUserLocation
             showsMyLocationButton

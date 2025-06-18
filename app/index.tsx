@@ -1,52 +1,109 @@
 import { Redirect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SplashScreen from './components/SplashScreen';
 import { colors } from './styles/theme';
-import * as AuthStateComponent from './utils/authState';
+import { clearAuthState, isAdminAuthenticated, isUserAuthenticated } from './utils/authState';
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isUser, setIsUser] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [initAttempts, setInitAttempts] = useState(0);
+  const MAX_INIT_ATTEMPTS = 3;
 
   useEffect(() => {
+    let isMounted = true;
+    let initTimeout: NodeJS.Timeout;
+    let retryTimeout: NodeJS.Timeout;
+
     const initializeApp = async () => {
-      // Hide navigation bar on Android
-      if (Platform.OS === 'android') {
-        try {
-          const systemUIManager = await import('./utils/systemUIManager');
-          await systemUIManager.default.hideNavigationBar();
-          await systemUIManager.default.setImmersiveMode();
-        } catch (error) {
-          console.error('Error hiding navigation bar:', error);
+      try {
+        console.log('[Index] Starting app initialization, attempt:', initAttempts + 1);
+        
+        // Add a small delay before initialization to ensure native bridge is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (!isMounted) return;
+
+        // Check authentication status with retry logic
+        await checkAuthStatus();
+
+        if (isMounted) {
+          console.log('[Index] App initialization successful');
+          setError(null);
+        }
+      } catch (err) {
+        console.error('[Index] Error during app initialization:', err);
+        if (isMounted) {
+          if (initAttempts < MAX_INIT_ATTEMPTS) {
+            console.log('[Index] Retrying initialization...');
+            retryTimeout = setTimeout(() => {
+              if (isMounted) {
+                setInitAttempts(prev => prev + 1);
+              }
+            }, 1000 * (initAttempts + 1)); // Exponential backoff
+          } else {
+            setError('Failed to initialize app. Please try again.');
+            setIsLoading(false);
+          }
         }
       }
-      
-      // Check authentication status
-      await checkAuthStatus();
     };
 
-    initializeApp();
-  }, []);
+    // Start initialization after a small delay
+    initTimeout = setTimeout(() => {
+      initializeApp();
+    }, 500);
+
+    return () => {
+      isMounted = false;
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+    };
+  }, [initAttempts]); // Add initAttempts as dependency
 
   const checkAuthStatus = async () => {
     try {
       console.log('[Index] Starting authentication check...');
 
-      // Check both admin and user authentication
-      console.log('[Index] Checking admin authentication...');
-      const adminAuth = await AuthStateComponent.authState.isAdminAuthenticated();
-      console.log('[Index] Checking user authentication...');
-      const userAuth = await AuthStateComponent.authState.isUserAuthenticated();
+      // Add retry logic for auth checks
+      const maxRetries = 3;
+      let retryCount = 0;
+      let adminAuth = false;
+      let userAuth = false;
+      let lastError: Error | null = null;
+
+      while (retryCount < maxRetries) {
+        try {
+          // Check both auth states in parallel
+          const [adminResult, userResult] = await Promise.all([
+            isAdminAuthenticated(),
+            isUserAuthenticated()
+          ]);
+
+          adminAuth = adminResult;
+          userAuth = userResult;
+          break;
+        } catch (err) {
+          lastError = err as Error;
+          retryCount++;
+          if (retryCount === maxRetries) throw lastError;
+          await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+        }
+      }
 
       console.log('[Index] Auth status:', { adminAuth, userAuth });
 
-      // Ensure we're not in an invalid state (both admin and user authenticated)
       if (adminAuth && userAuth) {
         console.log('[Index] Invalid state detected: both admin and user are authenticated');
-        await AuthStateComponent.authState.clearAuthState();
+        await clearAuthState();
         setIsAdmin(false);
         setIsUser(false);
       } else {
@@ -58,15 +115,15 @@ export default function Index() {
       console.log('[Index] Auth check complete, loading state updated');
     } catch (error) {
       console.error('[Index] Error checking authentication status:', error);
-      // On error, clear auth state and set to not authenticated
       try {
-        await AuthStateComponent.authState.clearAuthState();
+        await clearAuthState();
       } catch (clearError) {
         console.error('[Index] Error clearing auth state:', clearError);
       }
       setIsAdmin(false);
       setIsUser(false);
       setIsLoading(false);
+      throw error; // Re-throw to trigger retry logic
     }
   };
 
@@ -75,9 +132,29 @@ export default function Index() {
     setShowSplash(false);
   };
 
+  const handleRetry = () => {
+    setError(null);
+    setIsLoading(true);
+    setInitAttempts(0); // Reset init attempts
+  };
+
   if (showSplash) {
     console.log('[Index] Rendering splash screen');
     return <SplashScreen onAnimationComplete={handleSplashComplete} />;
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={handleRetry}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   if (isLoading) {
@@ -85,6 +162,9 @@ export default function Index() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
+        {initAttempts > 0 && (
+          <Text style={styles.retryText}>Retrying initialization... ({initAttempts}/{MAX_INIT_ATTEMPTS})</Text>
+        )}
       </View>
     );
   }
@@ -105,5 +185,34 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: colors.background,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  retryText: {
+    marginTop: 10,
+    color: colors.textLight,
+    fontSize: 14,
   },
 });
