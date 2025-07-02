@@ -3,12 +3,12 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, shadows } from '../styles/theme';
 
 // OpenWeatherMap API configuration
-const OPENWEATHER_API_KEY = 'a8fe3125fdca88ccbc2a42423a7e4a5d'; // Replace with your actual API key
-const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
+const OPENWEATHER_API_KEY = 'a8fe3125fdca88ccbc2a42423a7e4a5d';
+const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5/weather?q=Kathmandu,np&appid=a8fe3125fdca88ccbc2a42423a7e4a5d&units=metric';
 
 interface WeatherData {
   temperature: number;
@@ -111,6 +111,24 @@ export default function WeatherScreen() {
         setError('Location services are disabled. Please enable location services to get weather information.');
         setLocationPermission(false);
         setLoading(false);
+        // Offer to open settings
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable location services in your device settings to get weather information.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
+            },
+          ]
+        );
         return false;
       }
 
@@ -121,6 +139,24 @@ export default function WeatherScreen() {
       if (status !== 'granted') {
         setError('Location permission is required to show weather information. Please enable location access in your device settings.');
         setLoading(false);
+        // Offer to open settings
+        Alert.alert(
+          'Location Permission Required',
+          'Please enable location access in your device settings to show weather information.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
+            },
+          ]
+        );
         return false;
       }
 
@@ -144,6 +180,24 @@ export default function WeatherScreen() {
       return location;
     } catch (err) {
       setError('Failed to get your current location. Please check your location settings and try again.');
+      // Offer to open settings
+      Alert.alert(
+        'Location Error',
+        'Failed to get your current location. Please check your location settings and try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              } else {
+                Linking.openSettings();
+              }
+            },
+          },
+        ]
+      );
       console.error('Error getting location:', err);
       return null;
     }

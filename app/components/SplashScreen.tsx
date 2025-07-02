@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import OrientationManager from '../utils/orientationManager';
 
 // Prevent the splash screen from auto-hiding
 ExpoSplashScreen.preventAutoHideAsync().catch(() => {
@@ -33,6 +34,17 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
     const initialize = async () => {
       try {
         console.log('[SplashScreen] Starting initialization...');
+
+        // Force portrait orientation for splash screen
+        try {
+          console.log('[SplashScreen] Setting portrait orientation');
+          if (OrientationManager.isOrientationSupported()) {
+            await OrientationManager.setPortraitOrientation();
+            console.log('[SplashScreen] Portrait orientation set successfully');
+          }
+        } catch (error) {
+          console.error('[SplashScreen] Error setting portrait orientation:', error);
+        }
 
         // Hide the native splash screen first
         try {

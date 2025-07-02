@@ -1,11 +1,8 @@
 const express = require('express');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { confirmPayment, createPaymentIntent } = require('../stripe');
-<<<<<<< HEAD
 const Payment = require('../models/payment');
 const User = require('../models/user');
-=======
->>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
 // const twilio = require('twilio');
 
 const router = express.Router();
@@ -56,7 +53,6 @@ router.post('/confirm-payment', authenticateToken, async (req, res) => {
     console.log('Payment intent status:', paymentIntent.status);
     
     if (paymentIntent.status === 'succeeded') {
-<<<<<<< HEAD
       // Save payment record to database
       const paymentRecord = await Payment.createPayment({
         user_id: userId,
@@ -67,8 +63,6 @@ router.post('/confirm-payment', authenticateToken, async (req, res) => {
         payment_method: paymentIntent.payment_method_types?.[0] || 'card'
       });
 
-=======
->>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
       // SMS notification temporarily disabled
       // if (phoneNumber) {
       //   try {
@@ -93,10 +87,7 @@ router.post('/confirm-payment', authenticateToken, async (req, res) => {
       res.json({
         success: true,
         paymentIntent,
-<<<<<<< HEAD
         paymentRecord,
-=======
->>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
         notificationSent: false // SMS notifications disabled
       });
     } else {

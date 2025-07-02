@@ -7,11 +7,11 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-<<<<<<< HEAD
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
+  Linking,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -32,35 +32,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-=======
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    Pressable,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import Animated, {
-    FadeInDown,
-    FadeInUp,
-    interpolate,
-    SlideInRight,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
->>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
 } from 'react-native-reanimated';
 import ALogoHeader from '../components/ALogoHeader';
 import ChatbotModal from '../components/ChatbotModal';
+import DisasterAlertsFeed from '../components/DisasterAlertsFeed';
 import DisasterCard from '../components/DisasterCard';
 import DonationCard from '../components/DonationCard';
 import DonationSuccessModal from '../components/DonationSuccessModal';
@@ -69,6 +44,7 @@ import disasterService, { DisasterData } from '../services/disasterService';
 import realTimeService from '../services/realTimeService';
 import { colors, shadows } from '../styles/theme';
 import { clearAuthState } from '../utils/authState';
+import OrientationManager from '../utils/orientationManager';
 
 const { width } = Dimensions.get('window');
 
@@ -134,16 +110,16 @@ export default function DashboardScreen() {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
-<<<<<<< HEAD
   // Chatbot state
   const [chatbotModalVisible, setChatbotModalVisible] = useState(false);
 
-=======
->>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
   const scrollY = useSharedValue(0);
   const contentHeight = useSharedValue(0);
   const scrollViewHeight = useSharedValue(0);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Add state to hold the count of real-time alerts
+  const [realTimeAlertCount, setRealTimeAlertCount] = useState(0);
 
   const handleDashboardScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
@@ -201,6 +177,27 @@ export default function DashboardScreen() {
 
   const requestLocationPermission = async () => {
     try {
+      const locationEnabled = await Location.hasServicesEnabledAsync();
+      if (!locationEnabled) {
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable location services in your device settings to get weather information for your area.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
       const { status } = await Location.requestForegroundPermissionsAsync();
       setLocationPermission(status === 'granted');
 
@@ -528,6 +525,13 @@ export default function DashboardScreen() {
     );
   };
 
+  // Add a handler for manual weather refresh
+  const handleWeatherRefresh = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    console.log('Weather data refresh triggered from dashboard refresh button');
+    await requestLocationPermission();
+  };
+
   const renderHeader = () => (
     <LinearGradient
       colors={['#FF3B30', '#FF6B6B']}
@@ -562,6 +566,13 @@ export default function DashboardScreen() {
               <View style={styles.weatherInfo}>
                 <Text style={styles.temperature}>{weatherData.temperature}°C</Text>
                 <Text style={styles.location}>{weatherData.cityName}</Text>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={handleWeatherRefresh}
+                  accessibilityLabel="Refresh weather data"
+                >
+                  <Ionicons name="refresh" size={22} color="#fff" />
+                </TouchableOpacity>
               </View>
             ) : null}
           </View>
@@ -746,7 +757,7 @@ export default function DashboardScreen() {
     }
   };
 
-  const renderUpdatesSection = () => {
+  const renderUpdatesSection = (realTimeAlertCount = 0) => {
     if (loadingUpdates) {
       return (
         <View style={styles.updatesLoadingContainer}>
@@ -780,7 +791,7 @@ export default function DashboardScreen() {
       );
     }
 
-    if (disasterUpdates.length === 0) {
+    if (disasterUpdates.length === 0 && realTimeAlertCount === 0) {
       return (
         <View style={styles.noUpdatesContainer}>
           <View style={styles.noUpdatesIconContainer}>
@@ -844,14 +855,15 @@ export default function DashboardScreen() {
     );
   };
 
+  useEffect(() => {
+    OrientationManager.setPortraitOrientation();
+  }, []);
+
   return (
     <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-<<<<<<< HEAD
         {renderHeader()}
-=======
->>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
@@ -910,15 +922,10 @@ export default function DashboardScreen() {
           >
             <View style={styles.sectionTitleContainer}>
               <View style={styles.sectionTitleWrapper}>
-                <View style={[styles.iconCircle, { backgroundColor: colors.danger }]}>
-                  <Ionicons name="warning" size={20} color="#fff" />
+                <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="newspaper" size={18} color="#fff" />
                 </View>
-                <View>
-                <Text style={styles.sectionTitle}>Active Disasters</Text>
-                  <Text style={styles.sectionSubtitle}>
-                    {activeDisasters.length} {activeDisasters.length === 1 ? 'disaster' : 'disasters'} reported
-                  </Text>
-                </View>
+                <Text style={styles.sectionTitle}>Latest Updates</Text>
               </View>
               <TouchableOpacity
                 style={styles.seeAllButton}
@@ -931,61 +938,12 @@ export default function DashboardScreen() {
                 <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
-            {renderDisastersSection()}
-          </Animated.View>
-
-          <Animated.View
-            style={styles.cardSection}
-            entering={FadeInUp.delay(400).duration(500)}
-          >
-            <View style={styles.sectionTitleContainer}>
-              <View style={styles.sectionTitleWrapper}>
-                <View style={[styles.iconCircle, { backgroundColor: colors.secondary }]}>
-                  <Ionicons name="stats-chart" size={18} color="#fff" />
-                </View>
-                <Text style={styles.sectionTitle}>Your Status</Text>
-              </View>
+            {/* Add real-time disaster alerts feed for Nepal */}
+            <View style={{ marginBottom: 16 }}>
+              <DisasterAlertsFeed limit={5} onCountChange={setRealTimeAlertCount} />
             </View>
-            <View style={styles.statsContainer}>
-              {stats.map((stat, index) => (
-                <Animated.View
-                  key={index}
-                  entering={FadeInDown.delay(500 + index * 100)}
-                  style={styles.statCard}
-                >
-                  <View style={[styles.statIconFloating, { backgroundColor: stat.color }]}>
-                    <Ionicons name={stat.icon} size={26} color="#fff" />
-                  </View>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </Animated.View>
-              ))}
-            </View>
-          </Animated.View>
-
-          <Animated.View
-            style={styles.cardSection}
-            entering={FadeInUp.delay(500).duration(500)}
-          >
-            <View style={styles.sectionTitleContainer}>
-              <View style={styles.sectionTitleWrapper}>
-                <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
-                  <Ionicons name="newspaper" size={18} color="#fff" />
-                </View>
-                <Text style={styles.sectionTitle}>Latest Updates</Text>
-              </View>
-                <TouchableOpacity
-                style={styles.seeAllButton}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/(dashboard)/alerts' as any);
-                }}
-              >
-                <Text style={styles.seeAllText}>See All</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-                </TouchableOpacity>
-            </View>
-            {renderUpdatesSection()}
+            {/* Optionally keep the original updates section below for local/other updates */}
+            {renderUpdatesSection(realTimeAlertCount)}
           </Animated.View>
 
           <Animated.View
@@ -995,7 +953,7 @@ export default function DashboardScreen() {
           </Animated.View>
         </ScrollView>
         
-        {/* Floating Chatbot Button */}
+        {/* Floating Chatbot Button
         <Animated.View
           entering={FadeInUp.delay(800).duration(500)}
           style={styles.floatingChatbotButton}
@@ -1010,7 +968,7 @@ export default function DashboardScreen() {
           >
             <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
           </TouchableOpacity>
-        </Animated.View>
+        </Animated.View> */}
         
         {renderMenu()}
         <WeatherModal
@@ -1246,42 +1204,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     marginRight: 4,
-  },
-  // Stats section styles
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 15,
-  },
-  statCard: {
-    flex: 1,
-    padding: 15,
-    marginHorizontal: 5,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  statIconFloating: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    ...shadows.medium,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  statValue: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 5,
-  },
-  statLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textLight,
-    textAlign: 'center',
   },
   // News section styles
   newsCard: {
@@ -1757,7 +1679,6 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
-<<<<<<< HEAD
   floatingChatbotButton: {
     position: 'absolute',
     bottom: 20,
@@ -1777,12 +1698,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-=======
-  scrollView: {
-    flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
->>>>>>> 19a0bbb3b476ee1d5a05fb6e2360ed67e8cde768
+  refreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 });

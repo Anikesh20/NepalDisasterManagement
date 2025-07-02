@@ -45,7 +45,7 @@ export default function AdminLayout() {
             await OrientationManager.setPortraitOrientation();
             console.log('Admin Layout: Portrait orientation restored');
           }
-        } catch (error) {
+        } catch (error) { 
           console.error('Admin Layout: Error restoring portrait orientation:', error);
         }
       };

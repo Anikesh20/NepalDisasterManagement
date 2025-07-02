@@ -7,6 +7,7 @@ import React, { useEffect } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { logout } from '../services/authService';
 import { colors } from '../styles/theme';
+import OrientationManager from '../utils/orientationManager';
 
 export default function DashboardLayout() {
   const router = useRouter();
@@ -24,7 +25,21 @@ export default function DashboardLayout() {
       }
     };
 
+    // Force portrait orientation for dashboard screens
+    const forcePortrait = async () => {
+      try {
+        console.log('Dashboard Layout: Setting portrait orientation');
+        if (OrientationManager.isOrientationSupported()) {
+          await OrientationManager.setPortraitOrientation();
+          console.log('Dashboard Layout: Portrait orientation set successfully');
+        }
+      } catch (error) {
+        console.error('Dashboard Layout: Error setting portrait orientation:', error);
+      }
+    };
+
     hideNavigationBar();
+    forcePortrait();
   }, []);
 
   const handleLogout = async () => {

@@ -28,6 +28,7 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import FormInput from '../components/FormInput';
 import Logo from '../components/Logo';
@@ -38,6 +39,7 @@ const { height } = Dimensions.get('window');
 
 const LoginScreen = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Static background gradient for light theme
   const gradientColors = ['#fdfcfb', '#e2d1f9', '#c1d3fe'];
@@ -127,7 +129,7 @@ const LoginScreen = () => {
         router.replace('/(dashboard)');
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
       Alert.alert('Login Failed', err.message || 'Something went wrong');
     } finally {
@@ -153,7 +155,11 @@ const LoginScreen = () => {
       style={styles.container}
     >
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <Animated.View entering={FadeInDown.delay(300).duration(800)} style={styles.logoContainer}>
             <Logo size="large" />
             <Text style={styles.curvyLabel}>SAJILO SAHAYOG</Text>
@@ -169,7 +175,6 @@ const LoginScreen = () => {
               keyboardType="email-address"
               autoCapitalize="none"
               error={emailError}
-              floatingLabel
             />
 
             <FormInput
@@ -179,7 +184,6 @@ const LoginScreen = () => {
               onChangeText={(text) => { setPassword(text); setPasswordError(''); }}
               secureTextEntry
               error={passwordError}
-              floatingLabel
             />
 
             {/* Login Button */}

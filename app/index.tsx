@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import SplashScreen from './components/SplashScreen';
 import { colors } from './styles/theme';
 import { clearAuthState, isAdminAuthenticated, isUserAuthenticated } from './utils/authState';
+import OrientationManager from './utils/orientationManager';
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
@@ -19,9 +20,25 @@ export default function Index() {
     let initTimeout: NodeJS.Timeout;
     let retryTimeout: NodeJS.Timeout;
 
+    // Force portrait orientation for the main app
+    const forcePortrait = async () => {
+      try {
+        console.log('[Index] Setting portrait orientation');
+        if (OrientationManager.isOrientationSupported()) {
+          await OrientationManager.setPortraitOrientation();
+          console.log('[Index] Portrait orientation set successfully');
+        }
+      } catch (error) {
+        console.error('[Index] Error setting portrait orientation:', error);
+      }
+    };
+
     const initializeApp = async () => {
       try {
         console.log('[Index] Starting app initialization, attempt:', initAttempts + 1);
+        
+        // Force portrait orientation first
+        await forcePortrait();
         
         // Add a small delay before initialization to ensure native bridge is ready
         await new Promise(resolve => setTimeout(resolve, 100));

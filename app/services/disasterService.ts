@@ -138,13 +138,48 @@ const mockDisasters: DisasterData[] = [
 // Get all active disasters
 export const getActiveDisasters = async (): Promise<DisasterData[]> => {
   try {
-    // In a real implementation, this would fetch from an API
-    // const response = await fetch(`${API_URL}/disasters/active`);
-    // const data = await response.json();
-    // return data;
-    
-    // For now, return mock data
-    return mockDisasters.filter(disaster => disaster.isActive);
+    // USGS Earthquake API for Nepal bounding box, last 7 days
+    const USGS_API_URL = 'https://earthquake.usgs.gov/fdsnws/event/1/query';
+    const today = new Date();
+    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      format: 'geojson',
+      starttime: sevenDaysAgo.toISOString().slice(0, 10),
+      endtime: today.toISOString().slice(0, 10),
+      minlatitude: '26.347',
+      maxlatitude: '30.447',
+      minlongitude: '80.058',
+      maxlongitude: '88.201',
+      minmagnitude: '4.0', // Only significant earthquakes
+    });
+    const response = await fetch(`${USGS_API_URL}?${params.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch earthquake data');
+    const data = await response.json();
+    // Map USGS features to DisasterData[]
+    const disasters: DisasterData[] = data.features.map((feature: any) => {
+      const props = feature.properties;
+      const coords = feature.geometry.coordinates;
+      return {
+        id: feature.id,
+        type: DisasterType.EARTHQUAKE,
+        title: props.title || 'Earthquake',
+        location: props.place || 'Nepal',
+        district: '', // USGS does not provide district
+        timestamp: new Date(props.time).toISOString(),
+        severity: props.mag >= 6 ? SeverityLevel.CRITICAL : props.mag >= 5 ? SeverityLevel.HIGH : SeverityLevel.MEDIUM,
+        affectedArea: props.place || 'Nepal',
+        description: `Magnitude ${props.mag} earthquake. ${props.place || ''}`,
+        casualties: undefined, // Not provided
+        evacuees: undefined, // Not provided
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+        coordinates: {
+          latitude: coords[1],
+          longitude: coords[0],
+        },
+      };
+    });
+    return disasters;
   } catch (error) {
     console.error('Error fetching active disasters:', error);
     throw error;

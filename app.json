@@ -3,7 +3,7 @@
     "name": "NepalDisasterManagement",
     "slug": "NepalDisasterManagement",
     "version": "1.0.0",
-    "orientation": "landscape",
+    "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "nepaldisastermanagement",
     "userInterfaceStyle": "automatic",
@@ -52,9 +52,6 @@
       "eas": {
         "projectId": "d115e6e8-100f-4e40-aad7-aea97086f74f"
       }
-    },
-    "cli": {
-      "appVersionSource": "remote"
     },
     "updates": {
       "enabled": true,

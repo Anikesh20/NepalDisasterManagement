@@ -73,7 +73,7 @@ export default function ReportDisasterScreen() {
           'Please enable location services in your device settings to use this feature.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { 
+            {
               text: 'Open Settings',
               onPress: () => {
                 if (Platform.OS === 'ios') {
@@ -111,7 +111,17 @@ export default function ReportDisasterScreen() {
             'Failed to get your current location. Please check your location settings and try again.',
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Try Again', onPress: requestLocationPermission }
+              { text: 'Try Again', onPress: requestLocationPermission },
+              {
+                text: 'Open Settings',
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              }
             ]
           );
         }
@@ -141,7 +151,17 @@ export default function ReportDisasterScreen() {
         'An error occurred while requesting location permission. Please try again.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Try Again', onPress: requestLocationPermission }
+          { text: 'Try Again', onPress: requestLocationPermission },
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              } else {
+                Linking.openSettings();
+              }
+            }
+          }
         ]
       );
     } finally {
