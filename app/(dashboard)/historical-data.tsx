@@ -3,15 +3,16 @@
 // npm install --save-dev @types/papaparse
 //
 // Set your CSV URL here (e.g., a GitHub raw link):
-const CSV_URL = 'https://raw.githubusercontent.com/yourusername/yourrepo/main/assets/incident_report_cleaned.csv';
+const CSV_URL = 'https://raw.githubusercontent.com/Anikesh20/NepalDisasterManagement/refs/heads/master/assets/incident_report_cleaned.csv';
 
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import Papa from 'papaparse';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BarChart, PieChart } from 'react-native-chart-kit';
+import { ActivityIndicator, Animated, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LineChart, PieChart } from 'react-native-chart-kit';
 import RNPickerSelect from 'react-native-picker-select';
+import StatsCard from '../components/admin/StatsCard';
 
 const importantHeaders = [
   'District',
@@ -49,26 +50,44 @@ const HistoricalDataScreen = () => {
     const loadCSV = async () => {
       setLoading(true);
       try {
-        // Fetch CSV from remote URL
+        console.log('[CSV] Fetching:', CSV_URL);
         const response = await fetch(CSV_URL);
-        if (!response.ok) throw new Error('Failed to fetch CSV');
+        console.log('[CSV] Response status:', response.status);
+        if (!response.ok) {
+          console.log('[CSV] Fetch failed:', response.status, response.statusText);
+          throw new Error('Failed to fetch CSV');
+        }
         const csvString = await response.text();
+        console.log('[CSV] CSV loaded, length:', csvString.length);
         const parsed = Papa.parse(csvString, { header: true, skipEmptyLines: true });
+        console.log('[CSV] Papa.parse result:', parsed);
         const rows: RowType[] = Array.isArray(parsed.data) ? parsed.data.filter((row: RowType) => !!row['District']) : [];
+        console.log('[CSV] Rows loaded:', rows.length);
         setData(rows);
         // Extract unique districts and years
         const uniqueDistricts = Array.from(new Set(rows.map((row: RowType) => row['District']).filter(Boolean))).sort();
         const uniqueYears = Array.from(new Set(rows.map((row: RowType) => {
           const date = row['Incident Date'];
-          if (!date) return null;
-          const year = typeof date === 'string' ? date.split('-')[0] : null;
-          return year;
-        }).filter(Boolean) as string[])).sort();
+          if (!date || typeof date !== 'string') return null;
+          // yyyy-mm-dd
+          if (date.includes('-')) {
+            return date.split('-')[0];
+          }
+          // mm/dd/yyyy
+          if (date.includes('/')) {
+            const parts = date.split('/');
+            return parts.length === 3 ? parts[2] : null;
+          }
+          return null;
+        }).filter((y): y is string => Boolean(y)))).sort();
+        console.log('[CSV] Unique districts:', uniqueDistricts);
+        console.log('[CSV] Unique years:', uniqueYears);
         setDistricts(uniqueDistricts);
         setYears(uniqueYears);
         setLoading(false);
       } catch (e: any) {
         setLoading(false);
+        console.log('[CSV] Error:', e.message);
         alert('Failed to load data: ' + e.message);
       }
     };
@@ -77,18 +96,23 @@ const HistoricalDataScreen = () => {
 
   // Filter data when filters change
   useEffect(() => {
-    let filtered = data;
-    if (selectedDistrict) {
-      filtered = filtered.filter((row: RowType) => row['District'] === selectedDistrict);
-    }
-    if (selectedYear) {
+    if (selectedDistrict && selectedYear) {
+      let filtered = data.filter((row: RowType) => row['District'] === selectedDistrict);
       filtered = filtered.filter((row: RowType) => {
         const date = row['Incident Date'];
         if (!date || typeof date !== 'string') return false;
-        return date.startsWith(selectedYear);
+        let year = '';
+        if (date.includes('/')) {
+          year = date.split('/').pop();
+        } else if (date.includes('-')) {
+          year = date.split('-')[0];
+        }
+        return year === selectedYear;
       });
+      setFilteredData(filtered);
+    } else {
+      setFilteredData([]);
     }
-    setFilteredData(filtered);
   }, [data, selectedDistrict, selectedYear]);
 
   // Summary stats
@@ -118,17 +142,34 @@ const HistoricalDataScreen = () => {
     }
   );
 
-  // Chart data: Deaths by year
-  const deathsByYear: { [year: string]: number } = {};
-  filteredData.forEach((row: RowType) => {
-    const date = row['Incident Date'];
-    if (!date || typeof date !== 'string') return;
-    const year = date.split('-')[0];
-    deathsByYear[year] = (deathsByYear[year] || 0) + parseInt(row['Total Death'] || '0', 10);
-  });
-  const deathsByYearChart = {
-    labels: Object.keys(deathsByYear),
-    datasets: [{ data: Object.values(deathsByYear) }],
+  // Chart data: Deaths by month (for trend line)
+  const deathsByMonth: { [month: string]: number } = {};
+  if (selectedYear) {
+    filteredData.forEach((row: RowType) => {
+      const date = row['Incident Date'];
+      if (!date || typeof date !== 'string') return;
+      let month = '';
+      // yyyy-mm-dd
+      if (date.includes('-')) {
+        const parts = date.split('-');
+        month = parts.length >= 2 ? parts[1] : '';
+      }
+      // mm/dd/yyyy
+      else if (date.includes('/')) {
+        const parts = date.split('/');
+        month = parts.length === 3 ? parts[0].padStart(2, '0') : '';
+      }
+      if (month) {
+        deathsByMonth[month] = (deathsByMonth[month] || 0) + parseInt(row['Total Death'] || '0', 10);
+      }
+    });
+  }
+  const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const deathsByMonthChart = {
+    labels: monthLabels,
+    datasets: [{
+      data: monthLabels.map((_, idx) => deathsByMonth[(idx + 1).toString().padStart(2, '0')] || 0)
+    }]
   };
 
   // Chart data: Incident type distribution
@@ -177,7 +218,7 @@ const HistoricalDataScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
       {/* Filters */}
       <View style={styles.filters}>
         <View style={styles.pickerContainer}>
@@ -186,7 +227,7 @@ const HistoricalDataScreen = () => {
             onValueChange={setSelectedDistrict}
             items={districts.map((d: string) => ({ label: d, value: d }))}
             value={selectedDistrict}
-            placeholder={{ label: 'All', value: null }}
+            placeholder={{ label: 'Select District', value: null }}
           />
         </View>
         <View style={styles.pickerContainer}>
@@ -195,71 +236,107 @@ const HistoricalDataScreen = () => {
             onValueChange={setSelectedYear}
             items={years.map((y: string) => ({ label: y, value: y }))}
             value={selectedYear}
-            placeholder={{ label: 'All', value: null }}
+            placeholder={{ label: 'Select Year', value: null }}
           />
         </View>
-        <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
-          <Text style={{ color: 'white' }}>Export CSV</Text>
+        <TouchableOpacity style={styles.exportBtn} onPress={handleExport} disabled={filteredData.length === 0}>
+          <Text style={{ color: filteredData.length === 0 ? '#ccc' : 'white' }}>Export CSV</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Summary Stats */}
-      <View style={styles.summary}>
-        <Text style={styles.summaryTitle}>Summary</Text>
-        <Text>Total Deaths: {summary.totalDeath}</Text>
-        <Text>Male: {summary.deathMale} | Female: {summary.deathFemale} | Unknown: {summary.deathUnknown}</Text>
-        <Text>Missing: {summary.missing} | Injured: {summary.injured}</Text>
-        <Text>Estimated Loss: Rs. {summary.estimatedLoss}</Text>
-        <Text>Property Loss: Rs. {summary.propertyLoss}</Text>
-        <Text>Cattle Loss: {summary.cattleLoss}</Text>
-      </View>
-
-      {/* Charts */}
-      <Text style={styles.chartTitle}>Deaths by Year</Text>
-      {deathsByYearChart.labels.length > 0 ? (
-        <BarChart
-          data={deathsByYearChart}
-          width={screenWidth - 32}
-          height={220}
-          yAxisLabel=""
-          yAxisSuffix=""
-          chartConfig={chartConfig}
-          style={styles.chart}
-        />
-      ) : <Text style={styles.noData}>No data for chart</Text>}
-
-      <Text style={styles.chartTitle}>Incident Type Distribution</Text>
-      {incidentPieData.length > 0 ? (
-        <PieChart
-          data={incidentPieData}
-          width={screenWidth - 32}
-          height={220}
-          chartConfig={chartConfig}
-          accessor="count"
-          backgroundColor="transparent"
-          paddingLeft="15"
-        />
-      ) : <Text style={styles.noData}>No data for chart</Text>}
-
-      {/* Data Table */}
-      <Text style={styles.chartTitle}>Filtered Data</Text>
-      <FlatList
-        data={filteredData}
-        keyExtractor={(_, idx) => idx.toString()}
-        horizontal={true}
-        renderItem={({ item }: { item: RowType }) => (
-          <View style={styles.row}>
-            {importantHeaders.map((header: string) => (
-              <View key={header} style={styles.cell}>
-                <Text style={styles.cellHeader}>{header}</Text>
-                <Text style={styles.cellValue}>{item[header]}</Text>
-              </View>
-            ))}
+      {/* Only show data if both filters are selected */}
+      {(!selectedDistrict || !selectedYear) ? (
+        <View style={styles.centered}>
+          <Text style={{ color: '#888', marginTop: 32 }}>Please select both a district and a year to view data.</Text>
+        </View>
+      ) : (
+        <>
+          {/* Summary Stats */}
+          <View style={styles.summary}>
+            <Text style={styles.summaryTitle}>Summary</Text>
+            <Text>Total Deaths: {summary.totalDeath}</Text>
+            <Text>Male: {summary.deathMale} | Female: {summary.deathFemale} | Unknown: {summary.deathUnknown}</Text>
+            <Text>Missing: {summary.missing} | Injured: {summary.injured}</Text>
+            <Text>Estimated Loss: Rs. {summary.estimatedLoss}</Text>
+            <Text>Property Loss: Rs. {summary.propertyLoss}</Text>
+            <Text>Cattle Loss: {summary.cattleLoss}</Text>
           </View>
-        )}
-        ListEmptyComponent={<Text style={styles.noData}>No data for selection</Text>}
-        style={{ marginBottom: 32 }}
-      />
+
+          {/* Infographic Cards */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginVertical: 16 }}>
+            <StatsCard
+              title="Total Deaths"
+              value={summary.totalDeath}
+              icon="skull-outline"
+              color="#E53935"
+            />
+            <StatsCard
+              title="Injured"
+              value={summary.injured}
+              icon="medkit-outline"
+              color="#FB8C00"
+            />
+            <StatsCard
+              title="Est. Loss"
+              value={`Rs. ${summary.estimatedLoss}`}
+              icon="cash-outline"
+              color="#3949AB"
+            />
+            <StatsCard
+              title="Top Incident"
+              value={incidentPieData.length > 0 ? incidentPieData[0].name : 'N/A'}
+              icon="alert-circle-outline"
+              color="#00897B"
+            />
+          </View>
+
+          {/* Trend Line Chart: Deaths by Month */}
+          <Text style={styles.chartTitle}>Deaths Trend (by Month)</Text>
+          {deathsByMonthChart.datasets[0].data.some(val => val > 0) ? (
+            <LineChart
+              data={deathsByMonthChart}
+              width={screenWidth - 32}
+              height={220}
+              yAxisLabel=""
+              yAxisSuffix=""
+              chartConfig={chartConfig}
+              style={styles.chart}
+              bezier
+            />
+          ) : <Text style={styles.noData}>No data for chart</Text>}
+
+          <Text style={styles.chartTitle}>Incident Type Distribution</Text>
+          {incidentPieData.length > 0 ? (
+            <PieChart
+              data={incidentPieData}
+              width={screenWidth - 32}
+              height={220}
+              chartConfig={chartConfig}
+              accessor="count"
+              backgroundColor="transparent"
+              paddingLeft="15"
+            />
+          ) : <Text style={styles.noData}>No data for chart</Text>}
+
+          {/* Animated Progress Bars for Gender Proportion */}
+          <Text style={styles.chartTitle}>Deaths by Gender</Text>
+          <AnimatedProgressBar label="Male" value={summary.deathMale} total={summary.totalDeath} color="#1976D2" />
+          <AnimatedProgressBar label="Female" value={summary.deathFemale} total={summary.totalDeath} color="#D81B60" />
+          <AnimatedProgressBar label="Unknown" value={summary.deathUnknown} total={summary.totalDeath} color="#757575" />
+
+          {/* Animated Progress Bars for Top 3 Incident Types */}
+          <Text style={styles.chartTitle}>Top Incident Types</Text>
+          {incidentPieData.slice(0, 3).map((item, idx) => (
+            <AnimatedProgressBar
+              key={item.name}
+              label={item.name}
+              value={item.count}
+              total={filteredData.length}
+              color={item.color}
+            />
+          ))}
+        </>
+      )}
     </ScrollView>
   );
 };
@@ -289,5 +366,26 @@ const styles = StyleSheet.create({
   cellHeader: { fontWeight: 'bold', fontSize: 12 },
   cellValue: { fontSize: 12 },
 });
+
+// Animated progress bar component
+function AnimatedProgressBar({ label, value, total, color }: { label: string, value: number, total: number, color: string }) {
+  const percent = total > 0 ? value / total : 0;
+  const widthAnim = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    Animated.timing(widthAnim, {
+      toValue: percent,
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [percent]);
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <Text style={{ fontSize: 14, marginBottom: 2 }}>{label}: {value} ({Math.round(percent * 100)}%)</Text>
+      <View style={{ height: 16, backgroundColor: '#eee', borderRadius: 8, overflow: 'hidden' }}>
+        <Animated.View style={{ height: 16, width: widthAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }), backgroundColor: color, borderRadius: 8 }} />
+      </View>
+    </View>
+  );
+}
 
 export default HistoricalDataScreen;

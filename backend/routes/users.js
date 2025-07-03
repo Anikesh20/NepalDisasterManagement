@@ -111,4 +111,26 @@ router.put('/:userId', authenticateToken, async (req, res) => {
     }
 });
 
+// Update Expo push token
+router.put('/:userId/expo-push-token', authenticateToken, async (req, res) => {
+    try {
+        const { expoPushToken } = req.body;
+        if (!expoPushToken) {
+            return res.status(400).json({ error: 'expoPushToken is required' });
+        }
+        // Only allow users to update their own token
+        if (String(req.user.userId) !== String(req.params.userId)) {
+            return res.status(403).json({ error: 'Not authorized to update this token' });
+        }
+        const updatedUser = await User.updateExpoPushToken(req.params.userId, expoPushToken);
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating Expo push token:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router; 

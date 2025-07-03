@@ -75,7 +75,8 @@
     "react-native-webview": "13.13.5",
     "react-native-xml2js": "^1.0.3",
     "stripe": "^18.1.1",
-    "twilio": "^5.7.0"
+    "twilio": "^5.7.0",
+    "expo-dev-client": "~5.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -8,13 +8,13 @@ const reportsRouter = require('./routes/reports');
 const { pool } = require('./db');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Log Twilio credentials status
+// Twilio credentials from environment variables
 console.log('\n=== Twilio Credentials Status ===');
-console.log('Account SID:', 'AC3fcc30c00d71e2a59eacb9cddf94228e'.substring(0, 8) + '...');
-console.log('Auth Token:', '50f91cbdf6867dc6bdacb2222e5883d2'.substring(0, 8) + '...');
-console.log('Phone Number: +16056574859');
+console.log('Account SID:', (process.env.TWILIO_ACCOUNT_SID || '').substring(0, 8) + '...');
+console.log('Auth Token:', (process.env.TWILIO_AUTH_TOKEN || '').substring(0, 8) + '...');
+console.log('Phone Number:', process.env.TWILIO_PHONE_NUMBER || 'Not set');
 console.log('===============================\n');
 
 // Middleware

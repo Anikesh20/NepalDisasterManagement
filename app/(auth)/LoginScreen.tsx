@@ -6,33 +6,35 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
 import Animated, {
-  FadeInDown,
-  FadeInUp,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming
+    FadeInDown,
+    FadeInUp,
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
+    withTiming
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import FormInput from '../components/FormInput';
 import Logo from '../components/Logo';
 import { login } from '../services/authService';
+import { updateExpoPushToken } from '../services/userService';
 import { colors } from '../styles/theme-simple';
 
 const { height } = Dimensions.get('window');
@@ -113,7 +115,7 @@ const LoginScreen = () => {
     setIsLoading(true);
     try {
       const response = await login(loginEmail, loginPassword);
-      const { saveUserAuthState, saveAdminAuthState } = await import('../utils/authState');
+      const { saveUserAuthState, saveAdminAuthState, getUserId } = await import('../utils/authState');
       
       // Store credentials for biometric login if biometric is available
       if (isBiometricAvailable) {
@@ -126,6 +128,24 @@ const LoginScreen = () => {
         router.replace('/(admin)');
       } else {
         await saveUserAuthState(response.user.id.toString(), response.token);
+        // Register for push notifications and send token to backend
+        try {
+          const userId = await getUserId();
+          if (userId) {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+              const { status } = await Notifications.requestPermissionsAsync();
+              finalStatus = status;
+            }
+            if (finalStatus === 'granted') {
+              const expoPushToken = (await Notifications.getExpoPushTokenAsync()).data;
+              await updateExpoPushToken(userId, expoPushToken);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to register or send Expo push token:', e);
+        }
         router.replace('/(dashboard)');
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

@@ -220,6 +220,19 @@ class User {
             throw error;
         }
     }
+
+    static async updateExpoPushToken(userId, expoPushToken) {
+        try {
+            const result = await db.query(
+                'UPDATE users SET expo_push_token = $1 WHERE id = $2 RETURNING *',
+                [expoPushToken, userId]
+            );
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating Expo push token:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = User; 
