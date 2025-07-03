@@ -86,33 +86,6 @@ export const signup = async (userData: any) => {
 
 export const login = async (email: string, password: string) => {
   try {
-    // Hardcoded credentials for testing
-    if (email === 'test@gmail.com' && password === '000000') {
-      console.log('Auth Debug - Using test credentials');
-      const mockUserData = {
-        user: {
-          id: 1,
-          email: 'test@gmail.com',
-          username: 'testuser',
-          full_name: 'Test User',
-          phone_number: '9860651033',
-          district: 'Kathmandu',
-          is_volunteer: false
-        },
-        token: 'mock_token_for_testing',
-        message: 'Login successful'
-      };
-
-      console.log('Auth Debug - Storing test user data');
-      // Store user data in AsyncStorage
-      await AsyncStorage.setItem('userId', String(mockUserData.user.id));
-      await AsyncStorage.setItem('token', mockUserData.token);
-      await AsyncStorage.setItem('userData', JSON.stringify(mockUserData.user));
-
-      console.log('Auth Debug - Test user data stored');
-      return mockUserData;
-    }
-
     console.log('Attempting login with:', API_URL);
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
