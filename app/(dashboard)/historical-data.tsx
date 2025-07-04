@@ -3,7 +3,7 @@
 // npm install --save-dev @types/papaparse
 //
 // Set your CSV URL here (e.g., a GitHub raw link):
-const CSV_URL = 'https://raw.githubusercontent.com/Anikesh20/NepalDisasterManagement/refs/heads/master/assets/incident_report_cleaned.csv';
+const CSV_URL = 'https://nepaldisastermanagement.onrender.com/api/historical-data';
 
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -54,8 +54,7 @@ const HistoricalDataScreen = () => {
         const response = await fetch(CSV_URL);
         console.log('[CSV] Response status:', response.status);
         if (!response.ok) {
-          console.log('[CSV] Fetch failed:', response.status, response.statusText);
-          throw new Error('Failed to fetch CSV');
+          throw new Error('Failed to fetch CSV. Please check the file URL or your internet connection.');
         }
         const csvString = await response.text();
         console.log('[CSV] CSV loaded, length:', csvString.length);

@@ -32,7 +32,7 @@ export interface DisasterReport {
 
 // Helper function to get auth token
 const getAuthToken = async (): Promise<string> => {
-  const token = await AsyncStorage.getItem('authToken');
+  const token = await AsyncStorage.getItem('token');
   if (!token) {
     throw new Error('Authentication required. Please log in to submit a report.');
   }
