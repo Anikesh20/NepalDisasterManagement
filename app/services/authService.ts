@@ -2,9 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './config';
 
 // Update this URL to match your actual backend server
-const getApiUrl = () => API_URL + '/auth';
-
-const API_URL = getApiUrl();
+const AUTH_API_URL = `${API_URL}/auth`;
 
 export interface User {
   id: number;
@@ -35,10 +33,10 @@ export const signup = async (userData: any) => {
       is_volunteer: userData.is_volunteer || userData.isVolunteer || false
     };
 
-    console.log('Attempting signup with:', API_URL);
+    console.log('Attempting signup with:', AUTH_API_URL);
     console.log('User data:', { ...formattedData, password: '***' });
 
-    const response = await fetch(`${API_URL}/signup`, {
+    const response = await fetch(`${AUTH_API_URL}/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -75,8 +73,8 @@ export const signup = async (userData: any) => {
 
 export const login = async (email: string, password: string) => {
   try {
-    console.log('Attempting login with:', API_URL);
-    const response = await fetch(`${API_URL}/login`, {
+    console.log('Attempting login with:', AUTH_API_URL);
+    const response = await fetch(`${AUTH_API_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -157,7 +155,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
     console.log('Auth Debug - Fetching user data from backend for ID:', userId);
     // In a real app, fetch user data from the backend
-    const response = await fetch(`${API_URL}/users/${userId}`, {
+    const response = await fetch(`${AUTH_API_URL}/users/${userId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
