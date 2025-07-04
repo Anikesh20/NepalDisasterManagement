@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 
 // Helper function to get the local IP address
 const getLocalIP = () => {
@@ -9,24 +8,8 @@ const getLocalIP = () => {
 
 // Determine the base URL based on environment variables or development defaults
 const getBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  } else if (__DEV__) {
-    // Fallback for development if EXPO_PUBLIC_API_URL is not set (e.g., expo start)
-    if (Platform.OS === 'android') {
-      // Android emulator points to 10.0.2.2 for host machine localhost
-      return 'http://10.0.2.2:3000';
-    } else if (Platform.OS === 'ios') {
-      // iOS simulator points to localhost
-      return 'http://localhost:3000';
-    } else {
-      // Physical device in development (requires local IP)
-      return `http://${getLocalIP()}:3000`;
-    }
-  } else {
-    // Fallback for production if EXPO_PUBLIC_API_URL is not set (should not happen with EAS)
-    return 'https://nepaldisastermanagement-production.up.railway.app';
-  }
+  // Always use Render backend for production and fallback
+  return 'https://nepaldisastermanagement.onrender.com';
 };
 
 // API configuration

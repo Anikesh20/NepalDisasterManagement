@@ -30,8 +30,8 @@
       },
       "env": {
         "NODE_ENV": "preview",
-        "EXPO_PUBLIC_API_URL": "https://nepaldisastermanagement-preview.up.railway.app",
-        "EXPO_PUBLIC_BACKEND_URL": "https://nepaldisastermanagement-preview.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://nepaldisastermanagement.onrender.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://nepaldisastermanagement.onrender.com"
       },
       "cache": {
         "key": "preview-cache"
@@ -39,16 +39,16 @@
     },
     "production": {
       "android": {
-        "buildType": "app-bundle",
-        "gradleCommand": ":app:bundleRelease"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "ios": {
         "buildConfiguration": "Release"
       },
       "env": {
         "NODE_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://nepaldisastermanagement-production.up.railway.app",
-        "EXPO_PUBLIC_BACKEND_URL": "https://nepaldisastermanagement-production.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://nepaldisastermanagement.onrender.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://nepaldisastermanagement.onrender.com"
       },
       "cache": {
         "key": "production-cache"

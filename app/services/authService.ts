@@ -1,21 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { API_URL } from './config';
 
 // Update this URL to match your actual backend server
-const getApiUrl = () => {
-  if (__DEV__) {
-    // Development environment
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:3000/api/auth'; // Android emulator
-    } else if (Platform.OS === 'ios') {
-      return 'http://localhost:3000/api/auth'; // iOS simulator
-    }
-  }
-  // Production environment - replace with your actual production API URL
-  return 'https://nepaldisastermanagement-production.up.railway.app/api/auth';
-};
-
-const API_URL = getApiUrl();
+const AUTH_API_URL = `${API_URL}/auth`;
 
 export interface User {
   id: number;
@@ -46,10 +33,10 @@ export const signup = async (userData: any) => {
       is_volunteer: userData.is_volunteer || userData.isVolunteer || false
     };
 
-    console.log('Attempting signup with:', API_URL);
+    console.log('Attempting signup with:', AUTH_API_URL);
     console.log('User data:', { ...formattedData, password: '***' });
 
-    const response = await fetch(`${API_URL}/signup`, {
+    const response = await fetch(`${AUTH_API_URL}/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -86,35 +73,8 @@ export const signup = async (userData: any) => {
 
 export const login = async (email: string, password: string) => {
   try {
-    // Hardcoded credentials for testing
-    if (email === 'test@gmail.com' && password === '000000') {
-      console.log('Auth Debug - Using test credentials');
-      const mockUserData = {
-        user: {
-          id: 1,
-          email: 'test@gmail.com',
-          username: 'testuser',
-          full_name: 'Test User',
-          phone_number: '9860651033',
-          district: 'Kathmandu',
-          is_volunteer: false
-        },
-        token: 'mock_token_for_testing',
-        message: 'Login successful'
-      };
-
-      console.log('Auth Debug - Storing test user data');
-      // Store user data in AsyncStorage
-      await AsyncStorage.setItem('userId', String(mockUserData.user.id));
-      await AsyncStorage.setItem('token', mockUserData.token);
-      await AsyncStorage.setItem('userData', JSON.stringify(mockUserData.user));
-
-      console.log('Auth Debug - Test user data stored');
-      return mockUserData;
-    }
-
-    console.log('Attempting login with:', API_URL);
-    const response = await fetch(`${API_URL}/login`, {
+    console.log('Attempting login with:', AUTH_API_URL);
+    const response = await fetch(`${AUTH_API_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -195,7 +155,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
     console.log('Auth Debug - Fetching user data from backend for ID:', userId);
     // In a real app, fetch user data from the backend
-    const response = await fetch(`${API_URL}/users/${userId}`, {
+    const response = await fetch(`${AUTH_API_URL}/users/${userId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-require('dotenv').config();
 
 // Signup route
 router.post('/signup', async (req, res) => {
@@ -62,6 +61,30 @@ router.post('/signup', async (req, res) => {
             });
             
             console.log('User created successfully:', user);
+
+            // Send welcome email
+            try {
+                const sgMail = require('@sendgrid/mail');
+                sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+                await sgMail.send({
+                    to: email,
+                    from: {
+                        email: process.env.SENDGRID_FROM_EMAIL || 'no-reply@nepaldisaster.org',
+                        name: process.env.SENDGRID_FROM_NAME || 'Nepal Disaster Management',
+                    },
+                    subject: 'Welcome to Nepal Disaster Management',
+                    text: `Dear ${full_name || username},\n\nYour account has been created successfully.\n\nThank you for joining us!`,
+                    html: `<p>Dear ${full_name || username},</p><p>Your account has been created successfully.</p><p>Thank you for joining us!</p>`
+                });
+                console.log('Welcome email sent to:', email);
+            } catch (emailError) {
+                if (emailError.response && emailError.response.body) {
+                    console.error('Error sending welcome email:', emailError.response.body);
+                } else {
+                    console.error('Error sending welcome email:', emailError);
+                }
+            }
+
             res.status(201).json(user);
         } catch (error) {
             console.error('Error creating user:', error);

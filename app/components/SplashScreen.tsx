@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { API_URL } from '../services/config';
 import OrientationManager from '../utils/orientationManager';
 
 // Prevent the splash screen from auto-hiding
@@ -24,6 +25,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<Error | null>(null);
+  const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
 
   useEffect(() => {
     console.log('[SplashScreen] Component mounted');
@@ -59,6 +61,24 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         if (!isMounted) return;
+
+        // Health check: connect to backend
+        try {
+          const res = await fetch(`${API_URL}/health`);
+          if (res.ok) {
+            setBackendHealthy(true);
+          } else {
+            setBackendHealthy(false);
+            setInitError(new Error('Backend unavailable'));
+            setIsInitialized(true);
+            return;
+          }
+        } catch (e) {
+          setBackendHealthy(false);
+          setInitError(new Error('Network error: Cannot reach backend'));
+          setIsInitialized(true);
+          return;
+        }
 
         // Start animations
         Animated.parallel([
@@ -132,7 +152,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
   if (initError) {
     return (
       <View style={[styles.container, { backgroundColor: '#fff' }]}>
-        <Text style={{ color: '#000', fontSize: 16 }}>Loading...</Text>
+        <Text style={{ color: '#000', fontSize: 16, marginBottom: 12 }}>Failed to connect to backend.</Text>
+        <Text style={{ color: '#000', fontSize: 14 }}>{initError.message}</Text>
       </View>
     );
   }

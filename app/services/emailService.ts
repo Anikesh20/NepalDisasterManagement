@@ -1,4 +1,4 @@
-import { API_CONFIG } from '../config/api';
+import { API_BASE_URL, API_CONFIG } from '../config/api';
 import { DonationResponse } from './donationService';
 
 class EmailService {
@@ -98,7 +98,7 @@ ${API_CONFIG.APP_NAME} Team
       const emailData = this.getDonationEmailTemplate(email, donationDetails);
       
       // Call backend API to send email
-      const response = await fetch(`${API_CONFIG.API_BASE_URL}/api/notifications/email`, {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

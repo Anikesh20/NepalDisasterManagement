@@ -20,4 +20,4 @@ export const API_CONFIG = {
 };
 
 // Export commonly used values directly
-export const API_BASE_URL = API_CONFIG.API_BASE_URL; 
+export const API_BASE_URL = 'https://nepaldisastermanagement.onrender.com'; 
