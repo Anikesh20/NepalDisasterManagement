@@ -1,19 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { API_URL } from './config';
 
 // Update this URL to match your actual backend server
-const getApiUrl = () => {
-  if (__DEV__) {
-    // Development environment
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:3000/api/auth'; // Android emulator
-    } else if (Platform.OS === 'ios') {
-      return 'http://localhost:3000/api/auth'; // iOS simulator
-    }
-  }
-  // Production environment - replace with your actual production API URL
-  return 'https://nepaldisastermanagement-production.up.railway.app/api/auth';
-};
+const getApiUrl = () => API_URL + '/auth';
 
 const API_URL = getApiUrl();
 

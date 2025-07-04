@@ -1,4 +1,4 @@
-import { API_CONFIG } from '../config/api';
+import { API_BASE_URL, API_CONFIG } from '../config/api';
 import { DonationResponse } from './donationService';
 
 class SMSService {
@@ -39,7 +39,7 @@ class SMSService {
       const message = this.getDonationSMSTemplate(donationDetails);
 
       // Call backend API to send SMS
-      const response = await fetch(`${API_CONFIG.API_BASE_URL}/api/notifications/sms`, {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/sms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
