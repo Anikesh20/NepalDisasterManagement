@@ -1,0 +1,21 @@
+{
+  "path": "backend\\__tests__\\core\\alerts.test.js",
+  "stats": {
+    "end": 1751881040141,
+    "loadTestEnvironmentEnd": 1751881031931,
+    "loadTestEnvironmentStart": 1751881029946,
+    "runtime": 8169,
+    "setupAfterEnvEnd": 1751881034561,
+    "setupAfterEnvStart": 1751881034156,
+    "setupFilesEnd": 1751881032317,
+    "setupFilesStart": 1751881031972,
+    "slow": true,
+    "start": 1751881031972
+  },
+  "tests": [
+    {
+      "fullName": "GET /api/alerts should return an array of alerts",
+      "duration": 135
+    }
+  ]
+}

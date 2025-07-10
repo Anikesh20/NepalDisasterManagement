@@ -1,0 +1,21 @@
+{
+  "path": "app\\__tests__\\volunteerStatus.test.tsx",
+  "stats": {
+    "end": 1751881039414,
+    "loadTestEnvironmentEnd": 1751881038841,
+    "loadTestEnvironmentStart": 1751881038828,
+    "runtime": 572,
+    "setupAfterEnvEnd": 1751881039381,
+    "setupAfterEnvStart": 1751881039242,
+    "setupFilesEnd": 1751881038874,
+    "setupFilesStart": 1751881038842,
+    "slow": false,
+    "start": 1751881038842
+  },
+  "tests": [
+    {
+      "fullName": "VolunteerStatus displays volunteer status",
+      "duration": 2
+    }
+  ]
+}

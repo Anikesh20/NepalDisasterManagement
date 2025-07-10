@@ -202,13 +202,42 @@ export const updateExpoPushToken = async (userId: string, expoPushToken: string)
   }
 };
 
+export const updateVolunteerProfile = async (userId: string, volunteerData: any) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+    const response = await fetch(`${API_URL}/volunteers/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(volunteerData),
+    });
+    if (!response.ok) {
+      let errorMsg = 'Failed to update volunteer profile';
+      try {
+        const errData = await response.json();
+        if (errData && errData.error) errorMsg = errData.error;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating volunteer profile:', error);
+    throw error;
+  }
+};
+
 // Create a default export object with all the functions
 const userService = {
   getUserProfile,
   checkBackendConnection,
   setUseMockData,
   updateUserProfile,
-  updateExpoPushToken
+  updateExpoPushToken,
+  updateVolunteerProfile
 };
 
 export default userService;

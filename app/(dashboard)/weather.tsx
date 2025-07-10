@@ -7,8 +7,8 @@ import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Te
 import { colors, shadows } from '../styles/theme';
 
 // OpenWeatherMap API configuration
-const OPENWEATHER_API_KEY = 'a8fe3125fdca88ccbc2a42423a7e4a5d';
-const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5/weather?q=Kathmandu,np&appid=a8fe3125fdca88ccbc2a42423a7e4a5d&units=metric';
+const OPENWEATHER_API_KEY = 'c21da616f194e7d7f754a091488b8b6d';
+const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 interface WeatherData {
   temperature: number;
@@ -204,6 +204,7 @@ export default function WeatherScreen() {
   };
 
   const fetchLocationAndWeather = async () => {
+    console.log('fetchLocationAndWeather called');
     try {
       setLoading(true);
       setError(null);
@@ -251,6 +252,16 @@ export default function WeatherScreen() {
         throw new Error(forecastData.message || 'Failed to fetch forecast data');
       }
 
+      // Debug: log forecastData and forecastData.list
+      console.log('forecastData:', forecastData);
+
+      // Defensive check for forecastData.list
+      if (!forecastData.list || !Array.isArray(forecastData.list)) {
+        setError('Failed to fetch forecast data: Invalid response from weather API.');
+        setLoading(false);
+        return;
+      }
+
       // Process current weather data
       const currentWeather: WeatherData = {
         temperature: Math.round(weatherData.main.temp),
@@ -269,23 +280,25 @@ export default function WeatherScreen() {
       };
 
       // Process forecast data
-      const dailyForecasts = forecastData.list.reduce((acc: any[], item: any) => {
-        const date = new Date(item.dt * 1000);
-        const day = date.toLocaleDateString('en-US', { weekday: 'short' });
-        
-        if (!acc.find((f: any) => f.day === day)) {
-          acc.push({
-            day,
-            date: formatDate(item.dt),
-            highTemp: Math.round(item.main.temp_max),
-            lowTemp: Math.round(item.main.temp_min),
-            condition: item.weather[0].main,
-            icon: getWeatherIcon(item.weather[0].icon),
-            precipitation: item.rain ? Math.round(item.rain['3h'] * 100) : 0,
-          });
-        }
-        return acc;
-      }, []).slice(0, 5);
+      const dailyForecasts = Array.isArray(forecastData.list)
+        ? forecastData.list.reduce((acc: any[], item: any) => {
+            const date = new Date(item.dt * 1000);
+            const day = date.toLocaleDateString('en-US', { weekday: 'short' });
+            
+            if (!acc.find((f: any) => f.day === day)) {
+              acc.push({
+                day,
+                date: formatDate(item.dt),
+                highTemp: Math.round(item.main.temp_max),
+                lowTemp: Math.round(item.main.temp_min),
+                condition: item.weather[0].main,
+                icon: getWeatherIcon(item.weather[0].icon),
+                precipitation: item.rain ? Math.round(item.rain['3h'] * 100) : 0,
+              });
+            }
+            return acc;
+          }, []).slice(0, 5)
+        : [];
 
       // Check for weather alerts
       const alertsResponse = await fetch(
@@ -484,6 +497,7 @@ export default function WeatherScreen() {
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
+              console.log('Retry button pressed');
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               fetchLocationAndWeather();
             }}

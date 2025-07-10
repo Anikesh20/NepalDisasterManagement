@@ -1,0 +1,25 @@
+{
+  "path": "backend\\__tests__\\core\\reportSubmission.test.js",
+  "stats": {
+    "end": 1751881040230,
+    "loadTestEnvironmentEnd": 1751881031852,
+    "loadTestEnvironmentStart": 1751881029868,
+    "runtime": 8351,
+    "setupAfterEnvEnd": 1751881034486,
+    "setupAfterEnvStart": 1751881034086,
+    "setupFilesEnd": 1751881032156,
+    "setupFilesStart": 1751881031879,
+    "slow": true,
+    "start": 1751881031879
+  },
+  "tests": [
+    {
+      "fullName": "POST /api/reports should fail without authentication",
+      "duration": 191
+    },
+    {
+      "fullName": "POST /api/reports should fail with missing required fields",
+      "duration": 32
+    }
+  ]
+}

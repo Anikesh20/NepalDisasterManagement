@@ -7,7 +7,8 @@
     "dev": "nodemon server.js",
     "create-admin": "node scripts/create-admin.js",
     "migrate": "node scripts/run-migration.js",
-    "send-disaster-push": "node scripts/sendDisasterPushNotifications.js"
+    "send-disaster-push": "node scripts/sendDisasterPushNotifications.js",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -19,12 +20,15 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.18.2",
+    "fast-xml-parser": "^4.2.5",
     "jsonwebtoken": "^9.0.0",
     "multer": "^2.0.1",
     "node-fetch": "^2.6.7",
     "pg": "^8.10.0",
     "stripe": "^12.15.0",
-    "twilio": "^4.18.0",
-    "fast-xml-parser": "^4.2.5"
+    "twilio": "^4.18.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.1"
   }
 }

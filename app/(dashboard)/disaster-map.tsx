@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import MapView, { Callout, Marker, Region } from 'react-native-maps';
-import disasterService, { DisasterData, DisasterType, getDisasterColor, getDisasterIcon } from '../services/disasterService';
 import { colors, shadows } from '../styles/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -16,202 +16,165 @@ const INITIAL_REGION: Region = {
   longitudeDelta: 5,
 };
 
+const GEOCODE_CACHE_KEY = 'geocodeCache';
+
+async function loadGeocodeCache() {
+  try {
+    const cacheString = await AsyncStorage.getItem(GEOCODE_CACHE_KEY);
+    return cacheString ? JSON.parse(cacheString) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveGeocodeCache(cache) {
+  try {
+    await AsyncStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
+let geocodeCache = {};
+
+async function geocodeLocation(location: string): Promise<{ latitude: number; longitude: number } | null> {
+  if (geocodeCache[location]) return geocodeCache[location];
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'NepalDisasterManagement/1.0 (contact@example.com)'
+      }
+    });
+    const text = await response.text();
+    if (text.trim().startsWith('<')) {
+      console.warn('Nominatim returned HTML (rate limit or error) for', location);
+      return null;
+    }
+    const data = JSON.parse(text);
+    if (data.length > 0) {
+      const coords = {
+        latitude: parseFloat(data[0].lat),
+        longitude: parseFloat(data[0].lon),
+      };
+      geocodeCache[location] = coords;
+      await saveGeocodeCache(geocodeCache);
+      return coords;
+    }
+  } catch (err) {
+    console.warn('Geocoding failed for', location, err);
+  }
+  return null;
+}
+
+function extractLocationFromTitle(title: string): string {
+  // Try to extract the location after 'at' or 'at ' in the title
+  const match = title.match(/at (.+)/i);
+  if (match && match[1]) return match[1].trim();
+  // Fallback: return the whole title
+  return title;
+}
+
 export default function DisasterMapScreen() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
-  const [disasters, setDisasters] = useState<DisasterData[]>([]);
-  const [filteredDisasters, setFilteredDisasters] = useState<DisasterData[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<DisasterType | 'all'>('all');
-  const [selectedDisaster, setSelectedDisaster] = useState<DisasterData | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
+  const [geocodedAlerts, setGeocodedAlerts] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchDisasters = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await disasterService.getActiveDisasters();
-        setDisasters(data);
-        setFilteredDisasters(data);
-      } catch (err: any) {
-        console.error('Error fetching disasters:', err);
-        setError(err.message || 'Failed to fetch disaster data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDisasters();
+    (async () => {
+      geocodeCache = await loadGeocodeCache();
+    })();
   }, []);
 
-  const handleFilterChange = (filter: DisasterType | 'all') => {
-    setActiveFilter(filter);
+  // Fetch and geocode alerts every time the screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      const fetchAndGeocodeAlerts = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const { fetchBipadAlerts } = await import('../services/disasterAlertsService');
+          const data = await fetchBipadAlerts();
+          setAlerts(data);
+          const geocoded = await Promise.all(
+            data.map(async (alert) => {
+              if (alert.point && alert.point.coordinates) {
+                return { ...alert, latitude: alert.point.coordinates[1], longitude: alert.point.coordinates[0] };
+              }
+              const locationName = extractLocationFromTitle(alert.title);
+              const coords = await geocodeLocation(locationName);
+              if (coords) {
+                return { ...alert, latitude: coords.latitude, longitude: coords.longitude };
+              }
+              return null;
+            })
+          );
+          if (isActive) setGeocodedAlerts(geocoded.filter(Boolean));
+        } catch (err: any) {
+          if (isActive) setError(err.message || 'Failed to fetch alert data');
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      };
+      fetchAndGeocodeAlerts();
+      return () => { isActive = false; };
+    }, [])
+  );
 
-    if (filter === 'all') {
-      setFilteredDisasters(disasters);
-    } else {
-      const filtered = disasters.filter(disaster => disaster.type === filter);
-      setFilteredDisasters(filtered);
-    }
-  };
-
-  const handleMarkerPress = (disaster: DisasterData) => {
-    setSelectedDisaster(disaster);
-
-    // Animate to the selected disaster
-    if (disaster.coordinates && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: disaster.coordinates.latitude,
-        longitude: disaster.coordinates.longitude,
-        latitudeDelta: 0.5,
-        longitudeDelta: 0.5,
-      }, 1000);
-    }
-  };
-
-  const handleViewDetails = (disaster: DisasterData) => {
-    router.push({
-      pathname: '/(dashboard)/disaster-details',
-      params: { id: disaster.id }
-    });
-  };
-
-  const renderFilterChip = (type: DisasterType | 'all', label: string) => {
-    const isActive = activeFilter === type;
-    return (
-      <TouchableOpacity
-        style={[
-          styles.filterChip,
-          isActive && { backgroundColor: colors.primary }
-        ]}
-        onPress={() => handleFilterChange(type)}
+  const renderMarkers = () =>
+    geocodedAlerts.map((alert, idx) => (
+      <Marker
+        key={idx}
+        coordinate={{ latitude: alert.latitude, longitude: alert.longitude }}
+        pinColor={alert.source === 'dhm' ? '#1976D2' : '#E53935'}
       >
-        <Text style={[
-          styles.filterChipText,
-          isActive && { color: '#fff' }
-        ]}>
-          {label}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderMarkers = () => {
-    return filteredDisasters.map(disaster => {
-      if (!disaster.coordinates) return null;
-
-      return (
-        <Marker
-          key={disaster.id}
-          coordinate={{
-            latitude: disaster.coordinates.latitude,
-            longitude: disaster.coordinates.longitude,
-          }}
-          onPress={() => handleMarkerPress(disaster)}
-        >
-          <View style={[
-            styles.markerContainer,
-            { backgroundColor: getDisasterColor(disaster.type) + '80' }
-          ]}>
-            <Ionicons
-              name={getDisasterIcon(disaster.type)}
-              size={20}
-              color="#fff"
-            />
+        <Callout tooltip>
+          <View style={{ backgroundColor: '#fff', borderRadius: 8, padding: 12, minWidth: 240 }}>
+            <Text style={{ fontWeight: 'bold', color: '#1976D2', fontSize: 16, marginBottom: 2 }}>{alert.title}</Text>
+            <Text style={{ color: '#333', fontSize: 13, marginBottom: 2 }}>{alert.pubDate ? new Date(alert.pubDate).toLocaleString('en-GB', { timeZone: 'Asia/Kathmandu' }) : ''} (NPT)</Text>
+            <Text style={{ fontWeight: 'bold', marginTop: 4 }}>Basin:</Text>
+            <Text>{alert.description?.match(/Basin:([^\\n]+)/)?.[1]?.trim() || '-'}</Text>
+            <Text style={{ fontWeight: 'bold', marginTop: 4 }}>Station Name:</Text>
+            <Text>{extractLocationFromTitle(alert.title)}</Text>
+            <Text style={{ fontWeight: 'bold', marginTop: 4 }}>WATER LEVEL</Text>
+            <Text>{alert.description?.match(/Water level:([^\\n]+)/)?.[1]?.trim() || '-'}</Text>
+            <Text style={{ fontWeight: 'bold', marginTop: 4 }}>Source:</Text>
+            <Text>{alert.source}</Text>
+            {/* Show all other fields for debugging */}
+            {Object.entries(alert).map(([key, value]) => (
+              ['title', 'pubDate', 'description', 'point', 'source', 'latitude', 'longitude'].includes(key) ? null : (
+                <View key={key} style={{ marginTop: 2 }}>
+                  <Text style={{ fontWeight: 'bold' }}>{key}:</Text>
+                  <Text selectable style={{ fontSize: 12 }}>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Text>
+                </View>
+              )
+            ))}
           </View>
-          <Callout tooltip>
-            <View style={styles.calloutContainer}>
-              <Text style={styles.calloutTitle}>{disaster.title}</Text>
-              <Text style={styles.calloutLocation}>{disaster.location}, {disaster.district}</Text>
-              <Text style={styles.calloutDescription} numberOfLines={2}>
-                {disaster.description}
-              </Text>
-              <TouchableOpacity
-                style={styles.calloutButton}
-                onPress={() => handleViewDetails(disaster)}
-              >
-                <Text style={styles.calloutButtonText}>View Details</Text>
-              </TouchableOpacity>
-            </View>
-          </Callout>
-        </Marker>
-      );
-    });
-  };
+        </Callout>
+      </Marker>
+    ));
 
   return (
-    <View style={styles.container}>
-      <View style={styles.filtersContainer}>
-        <Text style={styles.filtersTitle}>Filter by type:</Text>
-        <View style={styles.filterChipsContainer}>
-          {renderFilterChip('all', 'All')}
-          {renderFilterChip(DisasterType.EARTHQUAKE, 'Earthquake')}
-          {renderFilterChip(DisasterType.FLOOD, 'Flood')}
-          {renderFilterChip(DisasterType.FIRE, 'Fire')}
-          {renderFilterChip(DisasterType.LANDSLIDE, 'Landslide')}
-          {renderFilterChip(DisasterType.STORM, 'Storm')}
-        </View>
-      </View>
-
+    <View style={{ flex: 1 }}>
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary }} />
-          <Text style={styles.loadingText}>Loading disaster information...</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>Loading alert locations...</Text>
         </View>
       ) : error ? (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => handleFilterChange(activeFilter)}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: 'red' }}>{error}</Text>
         </View>
       ) : (
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={INITIAL_REGION}
-            showsUserLocation
-            showsMyLocationButton
-          >
-            {renderMarkers()}
-          </MapView>
-
-          {selectedDisaster && (
-            <View style={styles.selectedDisasterContainer}>
-              <View style={styles.selectedDisasterContent}>
-                <View style={[
-                  styles.selectedDisasterIcon,
-                  { backgroundColor: getDisasterColor(selectedDisaster.type) + '20' }
-                ]}>
-                  <Ionicons
-                    name={getDisasterIcon(selectedDisaster.type)}
-                    size={24}
-                    color={getDisasterColor(selectedDisaster.type)}
-                  />
-                </View>
-                <View style={styles.selectedDisasterInfo}>
-                  <Text style={styles.selectedDisasterTitle}>{selectedDisaster.title}</Text>
-                  <Text style={styles.selectedDisasterLocation}>
-                    {selectedDisaster.location}, {selectedDisaster.district}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.viewDetailsButton}
-                onPress={() => handleViewDetails(selectedDisaster)}
-              >
-                <Text style={styles.viewDetailsText}>View Details</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        <MapView
+          ref={mapRef}
+          style={{ flex: 1 }}
+          initialRegion={{ latitude: 28.3949, longitude: 84.124, latitudeDelta: 5, longitudeDelta: 5 }}
+        >
+          {renderMarkers()}
+        </MapView>
       )}
     </View>
   );

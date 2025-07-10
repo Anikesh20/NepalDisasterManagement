@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  StyleSheet,
-  Text,
-  View,
+    Alert,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
 import DataTable from '../components/admin/DataTable';
-import adminService, { VolunteerData } from '../services/adminService';
+import adminService, { VolunteerData, rejectVolunteer, verifyVolunteer } from '../services/adminService';
 import { colors } from '../styles/theme';
 import useAdminOrientation from '../utils/useAdminOrientation';
 
@@ -14,6 +14,7 @@ export default function VolunteersManagement() {
   const [volunteers, setVolunteers] = useState<VolunteerData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   // Ensure landscape orientation
   useAdminOrientation();
@@ -43,11 +44,24 @@ export default function VolunteersManagement() {
   const handleViewVolunteer = (volunteer: VolunteerData) => {
     Alert.alert(
       'Volunteer Details',
-      `ID: ${volunteer.id}\nUser ID: ${volunteer.user_id}\nName: ${volunteer.user_name}\nSkills: ${volunteer.skills.join(', ')}\nAvailability: ${volunteer.availability}\nStatus: ${volunteer.status}\nRegistered: ${new Date(volunteer.created_at).toLocaleDateString()}`
+      `ID: ${volunteer.id}\nUser ID: ${volunteer.user_id}\nName: ${volunteer.user_name}\nSkills: ${volunteer.skills.join(', ')}\nAvailability: ${volunteer.availability}\nWeekly: ${volunteer.weekly_availability || ''}\nStatus: ${volunteer.status}\nRegistered: ${new Date(volunteer.created_at).toLocaleDateString()}`,
+      [
+        volunteer.status === 'pending' ? {
+          text: 'Verify',
+          onPress: () => handleChangeStatus(volunteer, 'active'),
+          style: 'default',
+        } : undefined,
+        volunteer.status !== 'inactive' ? {
+          text: 'Reject',
+          onPress: () => handleChangeStatus(volunteer, 'inactive'),
+          style: 'destructive',
+        } : undefined,
+        { text: 'Close', style: 'cancel' },
+      ].filter(Boolean)
     );
   };
 
-  const handleChangeStatus = (volunteer: VolunteerData, newStatus: 'active' | 'inactive') => {
+  const handleChangeStatus = async (volunteer: VolunteerData, newStatus: 'active' | 'inactive') => {
     Alert.alert(
       `${newStatus === 'active' ? 'Activate' : 'Deactivate'} Volunteer`,
       `Are you sure you want to ${newStatus === 'active' ? 'activate' : 'deactivate'} this volunteer?`,
@@ -58,13 +72,21 @@ export default function VolunteersManagement() {
         },
         {
           text: 'Confirm',
-          onPress: () => {
-            // In a real app, this would call an API to update the volunteer status
-            const updatedVolunteers = volunteers.map(v => 
-              v.id === volunteer.id ? { ...v, status: newStatus } : v
-            );
-            setVolunteers(updatedVolunteers);
-            Alert.alert('Success', `Volunteer has been ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
+          onPress: async () => {
+            setStatusLoading(true);
+            try {
+              if (newStatus === 'active') {
+                await verifyVolunteer(volunteer.id);
+              } else {
+                await rejectVolunteer(volunteer.id);
+              }
+              await loadVolunteers();
+              Alert.alert('Success', `Volunteer has been ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to update volunteer status');
+            } finally {
+              setStatusLoading(false);
+            }
           },
         },
       ]

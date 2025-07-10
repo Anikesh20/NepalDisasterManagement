@@ -1,8 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { API_BASE_URL } from '../config/api';
+import { updateVolunteerProfile } from '../services/userService';
 import { colors, shadows } from '../styles/theme';
 
 interface Skill {
@@ -20,6 +24,12 @@ export default function VolunteerStatusScreen() {
   const router = useRouter();
   const [isActive, setIsActive] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [weeklyAvailability, setWeeklyAvailability] = useState<Availability[]>([]);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [pending, setPending] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [volunteerStatus, setVolunteerStatus] = useState<string | null>(null);
 
   const skills: Skill[] = [
     { name: 'First Aid', icon: 'medical-outline', color: '#F44336' },
@@ -40,6 +50,43 @@ export default function VolunteerStatusScreen() {
     { day: 'Sunday', available: false },
   ];
 
+  useEffect(() => {
+    // Simulate fetching volunteer status from backend
+    // TODO: Fetch volunteer status and setPending(true) if status is 'pending'
+  }, []);
+
+  useEffect(() => {
+    if (weeklyAvailability.length === 0) {
+      setWeeklyAvailability([
+        { day: 'Monday', available: true },
+        { day: 'Tuesday', available: true },
+        { day: 'Wednesday', available: false },
+        { day: 'Thursday', available: true },
+        { day: 'Friday', available: true },
+        { day: 'Saturday', available: false },
+        { day: 'Sunday', available: false },
+      ]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchVolunteerStatus = async () => {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) return;
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/volunteers/${userId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setVolunteerStatus(data.status);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchVolunteerStatus();
+  }, []);
+
   const handleStatusToggle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsActive(!isActive);
@@ -48,6 +95,57 @@ export default function VolunteerStatusScreen() {
   const handleAvailabilityToggle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsAvailable(!isAvailable);
+  };
+
+  const handleSkillToggle = (skill: string) => {
+    setSelectedSkills(prev =>
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    );
+  };
+
+  const handleAvailabilityChange = (index: number, value: boolean) => {
+    setWeeklyAvailability(prev =>
+      prev.map((item, i) => (i === index ? { ...item, available: value } : item))
+    );
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      // Prepare weekly availability as JSON string
+      const weeklyAvail = JSON.stringify(weeklyAvailability);
+      // Get userId from AsyncStorage
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        alert('User not logged in.');
+        setLoading(false);
+        return;
+      }
+      await updateVolunteerProfile(userId, {
+        skills: selectedSkills,
+        availability: isAvailable ? 'Available' : 'Unavailable',
+        profile_image: profileImage,
+        weekly_availability: weeklyAvail,
+      });
+      setPending(true);
+      alert('Volunteer profile submitted! Awaiting admin verification.');
+    } catch (e) {
+      alert('Failed to submit volunteer profile.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderSkillCard = (skill: Skill, index: number) => (
@@ -64,10 +162,7 @@ export default function VolunteerStatusScreen() {
       <Text style={styles.availabilityDay}>{item.day}</Text>
       <Switch
         value={item.available}
-        onValueChange={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          // Handle availability toggle for specific day
-        }}
+        onValueChange={(value) => handleAvailabilityChange(index, value)}
         trackColor={{ false: colors.border, true: colors.primary }}
         thumbColor="#fff"
       />
@@ -76,13 +171,21 @@ export default function VolunteerStatusScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Volunteer Status</Text>
-      </View>
-
+      {volunteerStatus === 'active' && (
+        <View style={{ backgroundColor: '#4CAF50', padding: 8, borderRadius: 8, margin: 16 }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Verified Volunteer</Text>
+        </View>
+      )}
+      {volunteerStatus === 'pending' && (
+        <View style={{ backgroundColor: '#FFC107', padding: 8, borderRadius: 8, margin: 16 }}>
+          <Text style={{ color: '#333', fontWeight: 'bold', textAlign: 'center' }}>Your volunteer profile is pending admin verification.</Text>
+        </View>
+      )}
+      {volunteerStatus === 'inactive' && (
+        <View style={{ backgroundColor: '#F44336', padding: 8, borderRadius: 8, margin: 16 }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Your volunteer application was rejected.</Text>
+        </View>
+      )}
       <ScrollView 
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -119,15 +222,46 @@ export default function VolunteerStatusScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Skills</Text>
           <View style={styles.skillsContainer}>
-            {skills.map((skill, index) => renderSkillCard(skill, index))}
+            {skills.map((skill, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.skillCard, selectedSkills.includes(skill.name) && { borderColor: colors.primary, borderWidth: 2 }]}
+                onPress={() => handleSkillToggle(skill.name)}
+              >
+                <View style={[styles.skillIcon, { backgroundColor: skill.color }]}>
+                  <Ionicons name={skill.icon as any} size={20} color="#fff" />
+                </View>
+                <Text style={styles.skillName}>{skill.name}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Weekly Availability</Text>
           <View style={styles.availabilityContainer}>
-            {availability.map((item, index) => renderAvailabilityItem(item, index))}
+            {weeklyAvailability.map((item, index) => renderAvailabilityItem(item, index))}
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Profile Image</Text>
+          <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={styles.profileImage} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Ionicons name="camera-outline" size={32} color={colors.textLight} />
+                <Text style={{ color: colors.textLight, marginTop: 8 }}>Add Image</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {profileImage && (
+            <TouchableOpacity onPress={() => setProfileImage(null)} style={styles.removeImageBtn}>
+              <Ionicons name="close-circle" size={20} color="#F44336" />
+              <Text style={{ color: '#F44336', marginLeft: 4 }}>Remove</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.infoCard}>
@@ -138,14 +272,12 @@ export default function VolunteerStatusScreen() {
         </View>
 
         <TouchableOpacity 
-          style={styles.editButton}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            // Navigate to edit profile
-          }}
+          style={[styles.editButton, loading && { opacity: 0.5 }]}
+          onPress={handleSubmit}
+          disabled={loading || pending}
         >
-          <Ionicons name="create-outline" size={20} color="#fff" />
-          <Text style={styles.editButtonText}>Edit Volunteer Profile</Text>
+          <Ionicons name="checkmark-done-outline" size={20} color="#fff" />
+          <Text style={styles.editButtonText}>{loading ? 'Submitting...' : 'Submit Volunteer Profile'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -308,5 +440,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  imagePicker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  imagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    resizeMode: 'cover',
+  },
+  removeImageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    alignSelf: 'center',
   },
 }); 

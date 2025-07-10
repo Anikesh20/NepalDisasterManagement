@@ -14,7 +14,11 @@ class User {
             blood_group,
             password,
             is_volunteer,
-            is_admin = false // Default to false for regular users
+            is_admin = false, // Default to false for regular users
+            skills,
+            availability,
+            profile_image,
+            weekly_availability
         } = userData;
 
         let adminFlag = is_admin;
@@ -95,9 +99,17 @@ class User {
 
                 // If user is a volunteer, insert into volunteers table
                 if (is_volunteer) {
+                    const volunteerFields = {
+                        skills: skills || [],
+                        availability: availability || null,
+                        profile_image: profile_image || null,
+                        weekly_availability: weekly_availability || null,
+                        status: 'pending',
+                    };
                     await client.query(
-                        'INSERT INTO volunteers (user_id, status) VALUES ($1, $2)',
-                        [user.id, 'active']
+                        `INSERT INTO volunteers (user_id, skills, availability, profile_image, weekly_availability, status)
+                         VALUES ($1, $2, $3, $4, $5, $6)`,
+                        [user.id, volunteerFields.skills, volunteerFields.availability, volunteerFields.profile_image, volunteerFields.weekly_availability, volunteerFields.status]
                     );
                     console.log('Volunteer record inserted successfully');
                 }

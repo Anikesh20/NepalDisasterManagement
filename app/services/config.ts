@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 
 // Helper function to get the local IP address
 const getLocalIP = () => {
@@ -8,7 +9,17 @@ const getLocalIP = () => {
 
 // Determine the base URL based on environment variables or development defaults
 const getBaseUrl = () => {
-  // Always use Render backend for production and fallback
+  // If running in development (emulator/simulator)
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      // Android emulator: 10.0.2.2 points to host machine
+      return 'http://10.0.2.2:3000';
+    } else if (Platform.OS === 'ios') {
+      // iOS simulator: localhost points to host machine
+      return 'http://localhost:3000';
+    }
+  }
+  // In production (APK build), use Render backend
   return 'https://nepaldisastermanagement.onrender.com';
 };
 

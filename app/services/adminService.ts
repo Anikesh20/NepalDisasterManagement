@@ -27,6 +27,8 @@ export interface VolunteerData {
   user_name: string;
   skills: string[];
   availability: string;
+  profile_image?: string;
+  weekly_availability?: string;
   status: 'active' | 'inactive' | 'pending';
   created_at: string;
 }
@@ -312,12 +314,41 @@ export const getAllUsers = async (): Promise<UserData[]> => {
 
 // Get all volunteers
 export const getAllVolunteers = async (): Promise<VolunteerData[]> => {
-  // In a real implementation, this would fetch from the API
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  return [...mockVolunteers];
+  try {
+    const adminToken = await AsyncStorage.getItem('adminToken');
+    if (!adminToken) {
+      throw new Error('Admin authentication required');
+    }
+    const response = await fetch(`${ADMIN_API_URL}/admin/volunteers`, {
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Accept': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch volunteers');
+    }
+    const data = await response.json();
+    if (!data.volunteers || !Array.isArray(data.volunteers)) {
+      throw new Error('Invalid response format from server');
+    }
+    // Map DB rows to VolunteerData
+    return data.volunteers.map((v: any) => ({
+      id: v.id.toString(),
+      user_id: v.user_id.toString(),
+      user_name: v.full_name || v.user_name || '',
+      skills: v.skills || [],
+      availability: v.availability || '',
+      profile_image: v.profile_image,
+      weekly_availability: v.weekly_availability,
+      status: v.status,
+      created_at: v.created_at,
+    }));
+  } catch (error) {
+    console.error('[adminService] Error in getAllVolunteers:', error);
+    throw error;
+  }
 };
 
 // Get all disasters
@@ -433,6 +464,40 @@ export const getAllDonations = async (): Promise<DonationHistory[]> => {
   }
 };
 
+export const verifyVolunteer = async (volunteerId: string) => {
+  const adminToken = await AsyncStorage.getItem('adminToken');
+  if (!adminToken) throw new Error('Admin authentication required');
+  const response = await fetch(`${ADMIN_API_URL}/admin/volunteers/${volunteerId}/verify`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${adminToken}`,
+      'Accept': 'application/json',
+    },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to verify volunteer');
+  }
+  return await response.json();
+};
+
+export const rejectVolunteer = async (volunteerId: string) => {
+  const adminToken = await AsyncStorage.getItem('adminToken');
+  if (!adminToken) throw new Error('Admin authentication required');
+  const response = await fetch(`${ADMIN_API_URL}/admin/volunteers/${volunteerId}/reject`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${adminToken}`,
+      'Accept': 'application/json',
+    },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to reject volunteer');
+  }
+  return await response.json();
+};
+
 const adminService = {
   getAdminStats,
   getAllUsers,
@@ -441,6 +506,8 @@ const adminService = {
   getAllReports,
   updateReportStatus,
   getAllDonations,
+  verifyVolunteer,
+  rejectVolunteer,
 };
 
 export default adminService;

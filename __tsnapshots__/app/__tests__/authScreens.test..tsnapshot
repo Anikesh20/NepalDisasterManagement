@@ -1,0 +1,25 @@
+{
+  "path": "app\\__tests__\\authScreens.test.tsx",
+  "stats": {
+    "end": 1751881039175,
+    "loadTestEnvironmentEnd": 1751881038555,
+    "loadTestEnvironmentStart": 1751881038547,
+    "runtime": 620,
+    "setupAfterEnvEnd": 1751881039124,
+    "setupAfterEnvStart": 1751881038996,
+    "setupFilesEnd": 1751881038586,
+    "setupFilesStart": 1751881038555,
+    "slow": false,
+    "start": 1751881038555
+  },
+  "tests": [
+    {
+      "fullName": "Auth Screens shows error on invalid login",
+      "duration": 7
+    },
+    {
+      "fullName": "Auth Screens shows error on invalid signup",
+      "duration": 26
+    }
+  ]
+}

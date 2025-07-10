@@ -1,56 +1,43 @@
 import axios from 'axios';
-import { XMLParser } from 'fast-xml-parser';
 
-// Fetch disaster alerts from GDACS (RSS/XML)
-export async function fetchGDACSAlerts() {
-  const url = 'https://www.gdacs.org/xml/rss.xml';
+// Fetch disaster alerts from bipadportal.gov.np
+export async function fetchBipadAlerts() {
+  // You may want to dynamically set the date range, but for now, fetch recent alerts
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const toISOStringNepal = (date) => {
+    // Nepal is UTC+5:45, so add 5*60+45=345 minutes
+    const offsetMs = 345 * 60 * 1000;
+    const local = new Date(date.getTime() + offsetMs);
+    return local.toISOString().replace('.000Z', '+05:45');
+  };
+  const started_on__gt = toISOStringNepal(weekAgo).slice(0, 19) + '+05:45';
+  const started_on__lt = toISOStringNepal(now).slice(0, 19) + '+05:45';
+  const url = `https://bipadportal.gov.np/api/v1/alert/?rainBasin=&rainStation=&riverBasin=&riverStation=&hazard=&inventoryItems=&started_on__gt=${encodeURIComponent(started_on__gt)}&started_on__lt=${encodeURIComponent(started_on__lt)}&expand=event&ordering=-started_on`;
   const { data } = await axios.get(url);
-  const parser = new XMLParser();
-  const parsed = parser.parse(data);
-  // Normalize GDACS alerts
-  const items = parsed.rss.channel.item || [];
-  return items.map((item: any) => ({
+  // Normalize bipadportal alerts
+  return (data.results || []).map((item: any) => ({
     title: item.title,
     description: item.description,
-    link: item.link,
-    pubDate: item.pubDate,
-    source: 'GDACS',
+    link: '', // No direct link in API, can be updated if available
+    pubDate: item.startedOn || item.createdOn,
+    source: item.source || 'BIPAD',
   }));
 }
 
-// Fetch disaster events from ReliefWeb
-export async function fetchReliefWebAlerts() {
-  const url = 'https://api.reliefweb.int/v1/disasters?appname=nepal-disaster-app&profile=full&limit=10';
-  const { data } = await axios.get(url);
-  // Normalize ReliefWeb alerts
-  return data.data.map((item: any) => ({
-    title: item.fields.name,
-    description: item.fields.description,
-    link: item.fields.url,
-    pubDate: item.fields.date.created,
-    source: 'ReliefWeb',
-  }));
-}
-
-// Aggregate all alerts (now only from free sources)
+// Aggregate all alerts (now only from bipadportal.gov.np)
 export async function fetchAllDisasterAlerts(lat: number, lon: number) {
-  let gdacs = [];
-  let reliefweb = [];
+  let bipad = [];
   let otherError = null;
   try {
-    [gdacs, reliefweb] = await Promise.all([
-      fetchGDACSAlerts(),
-      fetchReliefWebAlerts(),
-    ]);
+    bipad = await fetchBipadAlerts();
   } catch (err: any) {
     otherError = err;
-    console.warn('GDACS/ReliefWeb alerts failed:', err?.message || err);
+    console.warn('BIPAD alerts failed:', err?.message || err);
   }
 
-  // Show all alerts globally for testing
-  const allAlerts = [...gdacs, ...reliefweb];
-  if (allAlerts.length === 0 && otherError) {
-    throw new Error('Failed to load disaster alerts from all sources.');
+  if (bipad.length === 0 && otherError) {
+    throw new Error('Failed to load disaster alerts from BIPAD.');
   }
-  return allAlerts;
+  return bipad;
 } 

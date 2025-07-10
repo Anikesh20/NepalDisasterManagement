@@ -80,4 +80,75 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
     }
 });
 
+// List all pending volunteers
+router.get('/volunteers/pending', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT v.*, u.full_name, u.email, u.username
+            FROM volunteers v
+            JOIN users u ON v.user_id = u.id
+            WHERE v.status = 'pending'
+            ORDER BY v.created_at ASC
+        `);
+        res.json({ volunteers: result.rows });
+    } catch (error) {
+        console.error('Error fetching pending volunteers:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Verify (approve) a volunteer
+router.patch('/volunteers/:id/verify', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query(
+            `UPDATE volunteers SET status = 'active' WHERE id = $1 RETURNING *`,
+            [id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Volunteer not found' });
+        }
+        res.json({ volunteer: result.rows[0] });
+    } catch (error) {
+        console.error('Error verifying volunteer:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Reject a volunteer
+router.patch('/volunteers/:id/reject', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query(
+            `UPDATE volunteers SET status = 'inactive' WHERE id = $1 RETURNING *`,
+            [id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Volunteer not found' });
+        }
+        res.json({ volunteer: result.rows[0] });
+    } catch (error) {
+        console.error('Error rejecting volunteer:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// List all volunteers (for admin dashboard)
+router.get('/volunteers', authenticateToken, requireAdmin, async (req, res) => {
+  console.log('GET /api/admin/volunteers called');
+  try {
+    const result = await db.query(`
+      SELECT v.*, u.full_name, u.email, u.username
+      FROM volunteers v
+      JOIN users u ON v.user_id = u.id
+      ORDER BY v.created_at ASC
+    `);
+    console.log('Fetched volunteers:', result.rows.length);
+    res.json({ volunteers: result.rows });
+  } catch (error) {
+    console.error('Error fetching volunteers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router; 

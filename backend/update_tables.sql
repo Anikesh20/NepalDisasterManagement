@@ -34,7 +34,9 @@ CREATE TABLE volunteers (
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     skills TEXT[],
     availability VARCHAR(50),
-    status VARCHAR(50) DEFAULT 'active',
+    profile_image TEXT,
+    weekly_availability TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

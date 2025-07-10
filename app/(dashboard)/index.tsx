@@ -42,8 +42,9 @@ import DonationSuccessModal from '../components/DonationSuccessModal';
 import WeatherModal from '../components/WeatherModal';
 import disasterService, { DisasterData } from '../services/disasterService';
 import realTimeService from '../services/realTimeService';
+import { getUserProfile } from '../services/userService';
 import { colors, shadows } from '../styles/theme';
-import { clearAuthState } from '../utils/authState';
+import { clearAuthState, getUserId } from '../utils/authState';
 import OrientationManager from '../utils/orientationManager';
 
 const { width } = Dimensions.get('window');
@@ -51,7 +52,7 @@ const { width } = Dimensions.get('window');
 const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RH1RtLnm2eBVvTqnVeoBJepGyBj8cS0kFdlFgzwwcT66NRtDpyywesUqWZv08tfQQw3KlWPnqvrtBeq89ok5jXy00kkZ0iHlS';
 
 // OpenWeatherMap API configuration
-const OPENWEATHER_API_KEY = 'a8fe3125fdca88ccbc2a42423a7e4a5d';
+const OPENWEATHER_API_KEY = 'c21da616f194e7d7f754a091488b8b6d';
 const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 interface MenuItem {
@@ -120,6 +121,8 @@ export default function DashboardScreen() {
 
   // Add state to hold the count of real-time alerts
   const [realTimeAlertCount, setRealTimeAlertCount] = useState(0);
+
+  const [userName, setUserName] = useState<string>('User');
 
   const handleDashboardScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
@@ -555,7 +558,7 @@ export default function DashboardScreen() {
               <Text style={styles.welcomeEmoji}>👋</Text>
               <View style={styles.welcomeTextContainer}>
                 <Text style={styles.welcomeGreeting}>Hello,</Text>
-                <Text style={styles.welcomeName}>User</Text>
+                <Text style={styles.welcomeName}>{userName}</Text>
               </View>
             </View>
             {weatherLoading ? (
@@ -857,6 +860,23 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     OrientationManager.setPortraitOrientation();
+  }, []);
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const userId = await getUserId();
+        if (userId) {
+          const profile = await getUserProfile(userId);
+          if (profile && profile.username) {
+            setUserName(profile.username);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch user name:', err);
+      }
+    };
+    fetchUserName();
   }, []);
 
   return (

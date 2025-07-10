@@ -9,14 +9,9 @@ const reportsRouter = require('./routes/reports');
 const { pool } = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Twilio credentials from environment variables
-console.log('\n=== Twilio Credentials Status ===');
-console.log('Account SID:', (process.env.TWILIO_ACCOUNT_SID || '').substring(0, 8) + '...');
-console.log('Auth Token:', (process.env.TWILIO_AUTH_TOKEN || '').substring(0, 8) + '...');
-console.log('Phone Number:', process.env.TWILIO_PHONE_NUMBER || 'Not set');
-console.log('===============================\n');
+
 
 // Middleware
 app.use(cors());
@@ -33,6 +28,8 @@ app.use('/api/users', usersRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportsRouter);
+app.use('/api/volunteers', require('./routes/volunteers'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -46,7 +43,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log('Successfully connected to the database');
-});
+module.exports = app;
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log('Successfully connected to the database');
+  });
+}

@@ -1,0 +1,21 @@
+{
+  "path": "app\\__tests__\\navigation.test.tsx",
+  "stats": {
+    "end": 1751881036354,
+    "loadTestEnvironmentEnd": 1751881035766,
+    "loadTestEnvironmentStart": 1751881035757,
+    "runtime": 587,
+    "setupAfterEnvEnd": 1751881036335,
+    "setupAfterEnvStart": 1751881036229,
+    "setupFilesEnd": 1751881035802,
+    "setupFilesStart": 1751881035767,
+    "slow": false,
+    "start": 1751881035767
+  },
+  "tests": [
+    {
+      "fullName": "Navigation navigates between screens",
+      "duration": 3
+    }
+  ]
+}

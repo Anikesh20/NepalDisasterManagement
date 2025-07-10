@@ -1,0 +1,21 @@
+{
+  "path": "backend\\__tests__\\core\\reports.test.js",
+  "stats": {
+    "end": 1751881043774,
+    "loadTestEnvironmentEnd": 1751881031947,
+    "loadTestEnvironmentStart": 1751881029897,
+    "runtime": 11777,
+    "setupAfterEnvEnd": 1751881034701,
+    "setupAfterEnvStart": 1751881034281,
+    "setupFilesEnd": 1751881032306,
+    "setupFilesStart": 1751881031997,
+    "slow": true,
+    "start": 1751881031997
+  },
+  "tests": [
+    {
+      "fullName": "GET /api/reports should return an array of reports",
+      "duration": 3765
+    }
+  ]
+}

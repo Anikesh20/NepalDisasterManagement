@@ -5,7 +5,6 @@ const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const Papa = require('papaparse');
 
 // Configure multer for image upload
 const storage = multer.diskStorage({
@@ -270,20 +269,15 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// GET /api/historical-data - serve parsed historical data from CSV
-router.get('/historical-data', async (req, res) => {
-  try {
-    const csvPath = path.join(__dirname, '../../assets/incident_report_cleaned.csv');
-    const csvString = fs.readFileSync(csvPath, 'utf8');
-    const parsed = Papa.parse(csvString, { header: true, skipEmptyLines: true });
-    if (!parsed.data || !Array.isArray(parsed.data)) {
-      return res.status(500).json({ error: 'Failed to parse historical data' });
+// Public: Get all reports (for testing)
+router.get('/', async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM disaster_reports ORDER BY created_at DESC');
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error fetching reports:', error);
+        res.status(500).json({ error: 'Failed to fetch reports' });
     }
-    res.json(parsed.data);
-  } catch (err) {
-    console.error('Error serving historical data:', err);
-    res.status(500).json({ error: 'Failed to load historical data' });
-  }
 });
 
 module.exports = router; 
