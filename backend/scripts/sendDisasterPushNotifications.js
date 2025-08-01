@@ -93,26 +93,94 @@ function setLastSentAlert(alert) {
   fs.writeFileSync(LAST_ALERT_FILE, JSON.stringify(alert, null, 2));
 }
 
+// Add: Get top disaster from your own DB (last 24 hours, highest severity or most recent)
+async function getTopDisasterFromDB() {
+  const res = await pool.query(`
+    SELECT * FROM disaster_reports
+    WHERE created_at > NOW() - INTERVAL '24 hours'
+    ORDER BY severity DESC, created_at DESC
+    LIMIT 1
+  `);
+  return res.rows[0];
+}
+
+// Fetch disaster reports from BIPAD portal
+async function fetchBipadDisasterReports() {
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const toISOStringNepal = (date) => {
+    // Nepal is UTC+5:45, so add 5*60+45=345 minutes
+    const offsetMs = 345 * 60 * 1000;
+    const local = new Date(date.getTime() + offsetMs);
+    return local.toISOString().replace('.000Z', '+05:45');
+  };
+  const started_on__gt = toISOStringNepal(weekAgo).slice(0, 19) + '+05:45';
+  const started_on__lt = toISOStringNepal(now).slice(0, 19) + '+05:45';
+  const url = `https://bipadportal.gov.np/api/v1/alert/?rainBasin=&rainStation=&riverBasin=&riverStation=&hazard=&inventoryItems=&started_on__gt=${encodeURIComponent(started_on__gt)}&started_on__lt=${encodeURIComponent(started_on__lt)}&expand=event&ordering=-started_on`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return (data.results || []).map((item) => ({
+    title: item.title,
+    description: item.description,
+    startedOn: item.startedOn || item.createdOn,
+    pubDate: item.startedOn || item.createdOn, // Add pubDate for frontend compatibility
+    hazard: item.hazard,
+    district: item.district,
+    event: item.event,
+    source: 'BIPAD',
+  }));
+}
+
+module.exports = {
+  fetchGDACSAlerts,
+  fetchReliefWebAlerts,
+  fetchBipadDisasterReports,
+  getAllExpoPushTokens,
+  sendPushNotification,
+};
+
 // Main function
 async function main() {
   const alerts = await fetchAllDisasterAlerts();
-  if (!alerts.length) {
-    console.log('No alerts fetched.');
-    return;
-  }
   const lastSent = getLastSentAlert();
-  // Find the newest alert
-  const newestAlert = alerts[0];
-  if (!lastSent || lastSent.title !== newestAlert.title || lastSent.pubDate !== newestAlert.pubDate) {
-    // New alert detected
-    const users = await getAllExpoPushTokens();
-    for (const user of users) {
-      await sendPushNotification(user.expo_push_token, newestAlert.title, { alert: newestAlert });
+  let sent = false;
+  if (alerts.length) {
+    // Find the newest alert
+    const newestAlert = alerts[0];
+    if (!lastSent || lastSent.title !== newestAlert.title || lastSent.pubDate !== newestAlert.pubDate) {
+      // New alert detected
+      const users = await getAllExpoPushTokens();
+      for (const user of users) {
+        await sendPushNotification(user.expo_push_token, newestAlert.title, { alert: newestAlert });
+      }
+      setLastSentAlert({ title: newestAlert.title, pubDate: newestAlert.pubDate });
+      console.log('Sent push notification for new alert:', newestAlert.title);
+      sent = true;
     }
-    setLastSentAlert({ title: newestAlert.title, pubDate: newestAlert.pubDate });
-    console.log('Sent push notification for new alert:', newestAlert.title);
-  } else {
-    console.log('No new alert to send.');
+  }
+  if (!sent) {
+    // No new alert, send top disaster from DB every 2 hours
+    const now = new Date();
+    const lastSentTime = lastSent && lastSent.pubDate ? new Date(lastSent.pubDate) : null;
+    if (!lastSentTime || (now - lastSentTime) > 2 * 60 * 60 * 1000) { // 2 hours
+      const topDisaster = await getTopDisasterFromDB();
+      if (topDisaster) {
+        const users = await getAllExpoPushTokens();
+        for (const user of users) {
+          await sendPushNotification(
+            user.expo_push_token,
+            `Top Disaster: ${topDisaster.title} (${topDisaster.severity}) in ${topDisaster.district}`,
+            { disaster: topDisaster }
+          );
+        }
+        setLastSentAlert({ title: topDisaster.title, pubDate: now.toISOString() });
+        console.log('Sent top disaster notification:', topDisaster.title);
+      } else {
+        console.log('No top disaster found in DB for last 24 hours.');
+      }
+    } else {
+      console.log('No new alert and not yet time for top disaster notification.');
+    }
   }
   await pool.end();
 }

@@ -89,7 +89,13 @@ export default function DashboardLayout() {
                     >
                       <Ionicons name="arrow-back" size={24} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{options.title || route.name}</Text>
+                    <Text style={styles.headerTitle}>
+                      {typeof options.title === 'string'
+                        ? options.title
+                        : typeof route.name === 'string'
+                          ? route.name
+                          : 'Weather'}
+                    </Text>
                     <TouchableOpacity
                       style={styles.refreshButton}
                       onPress={() => {
@@ -118,7 +124,13 @@ export default function DashboardLayout() {
                   >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                   </TouchableOpacity>
-                  <Text style={styles.headerTitle}>{options.title || route.name}</Text>
+                  <Text style={styles.headerTitle}>
+                    {typeof options.title === 'string'
+                      ? options.title
+                      : typeof route.name === 'string'
+                        ? route.name
+                        : 'Screen'}
+                  </Text>
                   {route.name === 'my-reports' && (
                     <TouchableOpacity
                       style={styles.headerRightButton}
@@ -225,6 +237,12 @@ export default function DashboardLayout() {
           name="safety-tips"
           options={{
             title: 'Safety Tips',
+          }}
+        />
+        <Stack.Screen
+          name="alerts"
+          options={{
+            headerShown: false,
           }}
         />
       </Stack>

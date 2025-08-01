@@ -163,7 +163,9 @@ export default function Index() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.errorText}>
+          {typeof error === 'string' ? error : 'An error occurred during initialization'}
+        </Text>
         <TouchableOpacity 
           style={styles.retryButton}
           onPress={handleRetry}
@@ -180,7 +182,9 @@ export default function Index() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
         {initAttempts > 0 && (
-          <Text style={styles.retryText}>Retrying initialization... ({initAttempts}/{MAX_INIT_ATTEMPTS})</Text>
+          <Text style={styles.retryText}>
+            Retrying initialization... ({initAttempts}/{MAX_INIT_ATTEMPTS})
+          </Text>
         )}
       </View>
     );

@@ -491,11 +491,13 @@ const SignupScreen = () => {
             <FormInput
               label="Password"
               placeholder="Enter your password"
-              value={formData.password}
+              value={typeof formData.password === 'string' ? formData.password : ''}
               onChangeText={(text) => setFormData({ ...formData, password: text })}
-              secureTextEntry
+              secureTextEntry={true}
               error={errors.password}
               leftIcon="lock-closed-outline"
+              autoCorrect={false}
+              autoCapitalize="none"
             />
 
             <FormInput
@@ -503,9 +505,11 @@ const SignupScreen = () => {
               placeholder="Repeat your password"
               value={formData.repeatPassword}
               onChangeText={(text) => setFormData({ ...formData, repeatPassword: text })}
-              secureTextEntry
+              secureTextEntry={true}
               error={errors.repeatPassword}
               leftIcon="lock-closed-outline"
+              autoCorrect={false}
+              autoCapitalize="none"
             />
 
             <View style={styles.volunteerContainer}>

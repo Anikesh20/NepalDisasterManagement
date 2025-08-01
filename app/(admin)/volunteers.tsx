@@ -6,7 +6,7 @@ import {
     View
 } from 'react-native';
 import DataTable from '../components/admin/DataTable';
-import adminService, { VolunteerData, rejectVolunteer, verifyVolunteer } from '../services/adminService';
+import adminService from '../services/adminService';
 import { colors } from '../styles/theme';
 import useAdminOrientation from '../utils/useAdminOrientation';
 
@@ -76,9 +76,9 @@ export default function VolunteersManagement() {
             setStatusLoading(true);
             try {
               if (newStatus === 'active') {
-                await verifyVolunteer(volunteer.id);
+                await adminService.verifyVolunteer(volunteer.id);
               } else {
-                await rejectVolunteer(volunteer.id);
+                await adminService.rejectVolunteer(volunteer.id);
               }
               await loadVolunteers();
               Alert.alert('Success', `Volunteer has been ${newStatus === 'active' ? 'activated' : 'deactivated'}`);

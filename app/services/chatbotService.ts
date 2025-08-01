@@ -15,7 +15,7 @@ class ChatbotService {
   private baseUrl: string;
 
   constructor() {
-    this.apiKey = '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';
+    this.apiKey = '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';
     this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   }
 

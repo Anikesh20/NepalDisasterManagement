@@ -1,21 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  StyleProp,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextInputProps,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
+    StyleProp,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextInputProps,
+    TextStyle,
+    TouchableOpacity,
+    View,
+    ViewStyle,
 } from 'react-native';
 import Animated, {
-  interpolateColor,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+    interpolateColor,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
 } from 'react-native-reanimated';
 import { colors, shadows, typography } from '../styles/theme-simple';
 
@@ -53,7 +53,7 @@ const FormInput: React.FC<FormInputProps> = ({
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false); // always hidden by default
 
   // Animation values
   const focusAnim = useSharedValue(0);
@@ -125,12 +125,15 @@ const FormInput: React.FC<FormInputProps> = ({
             styles.input,
             leftIcon && styles.inputWithLeftIcon,
             (rightIcon || secureTextEntry) && styles.inputWithRightIcon,
-            inputStyle,
+            // Only apply inputStyle if not a password field
+            !(secureTextEntry) ? inputStyle : null,
+            // Force system font for password fields
+            secureTextEntry ? { fontFamily: undefined } : null,
           ]}
           placeholderTextColor={colors.placeholder}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          secureTextEntry={secureTextEntry ? !isPasswordVisible : false}
+          secureTextEntry={secureTextEntry && !isPasswordVisible}
           {...props}
         />
 
@@ -140,7 +143,7 @@ const FormInput: React.FC<FormInputProps> = ({
             onPress={handlePasswordVisibility}
           >
             <Ionicons
-              name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+              name={isPasswordVisible ? 'eye-outline' : 'eye-off-outline'}
               size={20}
               color={colors.textLight}
             />

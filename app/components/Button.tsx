@@ -135,6 +135,7 @@ const Button: React.FC<ButtonProps> = ({
   // For non-gradient buttons (outline, text, disabled)
   return (
     <TouchableOpacity
+      testID="button-touchable"
       activeOpacity={0.8}
       onPress={handlePress}
       disabled={disabled || isLoading}

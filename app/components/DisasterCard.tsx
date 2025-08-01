@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DisasterData, getDisasterColor, getDisasterIcon, getSeverityColor } from '../services/disasterService';
-import { colors, shadows } from '../styles/theme';
+import { colors } from '../styles/theme';
 
 interface DisasterCardProps {
   disaster: DisasterData;
@@ -96,9 +96,11 @@ export default function DisasterCard({ disaster, compact = false }: DisasterCard
 
   // Full card for alerts screen
   return (
-    <TouchableOpacity 
-      style={[styles.card, shadows.medium]}
+    <TouchableOpacity
+      testID="disaster-card"
+      style={[styles.card, compact && styles.compactCard, { borderLeftColor: getDisasterColor(disaster.type) }]}
       onPress={handlePress}
+      activeOpacity={0.8}
     >
       <View style={styles.cardHeader}>
         <View style={[styles.iconContainer, { backgroundColor: getDisasterColor(disaster.type) + '20' }]}>

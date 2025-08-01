@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,31 +8,31 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Linking,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Linking,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Animated, {
-  FadeInDown,
-  FadeInUp,
-  interpolate,
-  SlideInRight,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+    FadeInDown,
+    FadeInUp,
+    interpolate,
+    SlideInRight,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
 } from 'react-native-reanimated';
 import ALogoHeader from '../components/ALogoHeader';
 import ChatbotModal from '../components/ChatbotModal';
@@ -166,6 +167,12 @@ export default function DashboardScreen() {
       }
 
       setWeatherData({
+        temperature: Math.round(data.main.temp),
+        cityName: data.name,
+        country: data.sys.country,
+      });
+      // Add log to show weather data in terminal
+      console.log('Fetched weather data:', {
         temperature: Math.round(data.main.temp),
         cityName: data.name,
         country: data.sys.country,
@@ -879,9 +886,18 @@ export default function DashboardScreen() {
     fetchUserName();
   }, []);
 
+  const isFocused = useIsFocused();
+
+  // Add effect to refresh weather when dashboard regains focus
+  useEffect(() => {
+    if (isFocused) {
+      requestLocationPermission();
+    }
+  }, [isFocused]);
+
   return (
     <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
-      <View style={styles.container}>
+      <View style={styles.container} testID="dashboard-screen">
         <StatusBar barStyle="light-content" />
         {renderHeader()}
         <ScrollView
@@ -973,7 +989,7 @@ export default function DashboardScreen() {
           </Animated.View>
         </ScrollView>
         
-        {/* Floating Chatbot Button
+        Floating Chatbot Button
         <Animated.View
           entering={FadeInUp.delay(800).duration(500)}
           style={styles.floatingChatbotButton}
@@ -988,7 +1004,7 @@ export default function DashboardScreen() {
           >
             <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
           </TouchableOpacity>
-        </Animated.View> */}
+        </Animated.View>
         
         {renderMenu()}
         <WeatherModal
@@ -1030,7 +1046,8 @@ const styles = StyleSheet.create({
   headerContainer: {
     position: 'relative',
     marginBottom: 15,
-    ...shadows.medium,
+    // Removed shadow to prevent line above Quick Actions
+    // ...shadows.medium,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight,
@@ -1041,7 +1058,7 @@ const styles = StyleSheet.create({
     height: 40,
     overflow: 'hidden',
     position: 'absolute',
-    bottom: -1,
+    bottom: 0, // Changed from -1 to 0 for seamless transition
     left: 0,
     right: 0,
   },

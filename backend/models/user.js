@@ -104,7 +104,7 @@ class User {
                         availability: availability || null,
                         profile_image: profile_image || null,
                         weekly_availability: weekly_availability || null,
-                        status: 'pending',
+                        status: 'inactive',
                     };
                     await client.query(
                         `INSERT INTO volunteers (user_id, skills, availability, profile_image, weekly_availability, status)

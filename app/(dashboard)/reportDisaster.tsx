@@ -1,21 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Linking,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { DisasterType, getDisasterColor, getDisasterIcon, SeverityLevel } from '../services/disasterService';
@@ -56,6 +58,21 @@ export default function ReportDisasterScreen() {
     status: 'pending',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Prevent hardware back navigation while loading
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (loading) return true; // Block back if loading
+        return false;
+      };
+      // For React Navigation
+      const subscription = Platform.OS === 'android' ?
+        require('react-native').BackHandler.addEventListener('hardwareBackPress', onBackPress) :
+        { remove: () => {} };
+      return () => subscription.remove();
+    }, [loading])
+  );
 
   useEffect(() => {
     requestLocationPermission();
@@ -104,6 +121,44 @@ export default function ReportDisasterScreen() {
               longitude: location.coords.longitude,
             },
           }));
+          // Reverse geocode to get district
+          const geocode = await Location.reverseGeocodeAsync({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+          if (geocode && geocode.length > 0) {
+            // Try to match any field to NEPAL_DISTRICTS
+            const fieldsToCheck = [
+              geocode[0].district,
+              geocode[0].subregion,
+              geocode[0].region,
+              geocode[0].city,
+              geocode[0].name,
+            ];
+            let matchedDistrict = '';
+            for (const field of fieldsToCheck) {
+              if (field && NEPAL_DISTRICTS.includes(field)) {
+                matchedDistrict = field;
+                break;
+              }
+            }
+            // Fallback: try to find a district that includes the field as a substring (case-insensitive)
+            if (!matchedDistrict) {
+              for (const field of fieldsToCheck) {
+                if (field) {
+                  const found = NEPAL_DISTRICTS.find(d =>
+                    d.toLowerCase().includes(field.toLowerCase()) ||
+                    field.toLowerCase().includes(d.toLowerCase())
+                  );
+                  if (found) {
+                    matchedDistrict = found;
+                    break;
+                  }
+                }
+              }
+            }
+            setFormData(prev => ({ ...prev, district: matchedDistrict || '' }));
+          }
         } catch (locationError) {
           console.error('Error getting location:', locationError);
           Alert.alert(
@@ -176,9 +231,10 @@ export default function ReportDisasterScreen() {
       newErrors.title = 'Title is required';
     }
 
-    if (!formData.location?.trim()) {
-      newErrors.location = 'Location is required';
-    }
+    // Remove location validation
+    // if (!formData.location?.trim()) {
+    //   newErrors.location = 'Location is required';
+    // }
 
     if (!formData.district?.trim()) {
       newErrors.district = 'District is required';
@@ -186,8 +242,8 @@ export default function ReportDisasterScreen() {
 
     if (!formData.description?.trim()) {
       newErrors.description = 'Description is required';
-    } else if (formData.description.length < 20) {
-      newErrors.description = 'Description should be at least 20 characters';
+    } else if (formData.description.length < 10) {
+      newErrors.description = 'Description should be at least 10 characters';
     }
 
     if (!formData.contactNumber?.trim()) {
@@ -201,6 +257,7 @@ export default function ReportDisasterScreen() {
   };
 
   const handleSubmit = async () => {
+    if (loading) return; // Prevent double submit
     if (!validateForm()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -236,7 +293,8 @@ export default function ReportDisasterScreen() {
             text: 'OK',
             onPress: () => router.back(),
           },
-        ]
+        ],
+        { cancelable: false } // Make alert non-cancelable
       );
     } catch (error: any) {
       console.error('Error submitting report:', error);
@@ -486,7 +544,8 @@ export default function ReportDisasterScreen() {
           {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
         </View>
 
-        <View style={styles.formGroup}>
+        {/* Remove the location (manual entry) field */}
+        {/* <View style={styles.formGroup}>
           <Text style={styles.label}>Location</Text>
           <TextInput
             style={[styles.input, errors.location && styles.inputError]}
@@ -495,7 +554,7 @@ export default function ReportDisasterScreen() {
             onChangeText={(text) => setFormData(prev => ({ ...prev, location: text }))}
           />
           {errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
-        </View>
+        </View> */}
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>District</Text>
@@ -506,6 +565,7 @@ export default function ReportDisasterScreen() {
               value={formData.district}
               onChangeText={handleDistrictChange}
               onFocus={() => setShowDistrictDropdown(true)}
+              editable={false} // Make district read-only
             />
             <TouchableOpacity
               style={styles.districtDropdownButton}
@@ -612,7 +672,7 @@ export default function ReportDisasterScreen() {
         >
           {loading ? (
             <>
-              <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' }} />
+              <ActivityIndicator color="#fff" size="small" />
               <Text style={styles.submitButtonText}>
                 {uploadProgress > 0 ? `Uploading... ${uploadProgress}%` : 'Submitting...'}
               </Text>
@@ -625,6 +685,22 @@ export default function ReportDisasterScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      {/* Loading overlay */}
+      {loading && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.2)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 999,
+        }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }

@@ -1,6 +1,6 @@
 // Futuristic and Enhanced LoginScreen with Improved Gradient and Biometric UI
 
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -221,16 +221,10 @@ const LoginScreen = () => {
           </BlurView>
 
           {/* Divider */}
-          <Text style={styles.loginWithText}>Login with</Text>
 
           {/* Social Icons */}
           <View style={styles.socialIconContainer}>
-            <Pressable onPress={() => Alert.alert('Google login coming soon!')} style={styles.socialPressable}>
-              <FontAwesome name="google" size={26} color="#DB4437" />
-            </Pressable>
-            <Pressable onPress={() => Alert.alert('Facebook login coming soon!')} style={styles.socialPressable}>
-              <FontAwesome name="facebook" size={26} color="#4267B2" />
-            </Pressable>
+            {/* Removed Google and Facebook login buttons */}
           </View>
 
           {/* Biometric Login */}

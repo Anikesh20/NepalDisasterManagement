@@ -69,12 +69,12 @@ router.post('/signup', async (req, res) => {
                 await sgMail.send({
                     to: email,
                     from: {
-                        email: process.env.SENDGRID_FROM_EMAIL || 'no-reply@nepaldisaster.org',
-                        name: process.env.SENDGRID_FROM_NAME || 'Nepal Disaster Management',
+                        email: process.env.SENDGRID_FROM_EMAIL || 'no-reply@sajilosahayog.org',
+                        name: process.env.SENDGRID_FROM_NAME || 'Sajilo Sahayog',
                     },
-                    subject: 'Welcome to Nepal Disaster Management',
-                    text: `Dear ${full_name || username},\n\nYour account has been created successfully.\n\nThank you for joining us!`,
-                    html: `<p>Dear ${full_name || username},</p><p>Your account has been created successfully.</p><p>Thank you for joining us!</p>`
+                    subject: 'Welcome to Sajilo Sahayog!',
+                    text: `Dear ${full_name || username},\n\nWelcome to Sajilo Sahayog!\n\nWe are thrilled to have you join our community. Together, we can make a real difference in disaster management and community support across Nepal.\n\nIf you have any questions or need help, feel free to reach out.\n\nThank you for joining us!\n\nWarm regards,\nThe Sajilo Sahayog Team`,
+                    html: `<p>Dear <b>${full_name || username}</b>,</p><p>Welcome to <b>Sajilo Sahayog</b>!</p><p>We are thrilled to have you join our community. Together, we can make a real difference in disaster management and community support across Nepal.</p><p>If you have any questions or need help, feel free to reach out.</p><p>Thank you for joining us!</p><p>Warm regards,<br/><b>The Sajilo Sahayog Team</b></p>`
                 });
                 console.log('Welcome email sent to:', email);
             } catch (emailError) {
@@ -135,6 +135,30 @@ router.post('/login', async (req, res) => {
         }
 
         console.log('Login successful for user:', email);
+
+        // Send login notification email using Nodemailer
+        try {
+            const nodemailer = require('nodemailer');
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER || 'sajilosahayog@gmail.com',
+                    pass: process.env.EMAIL_PASS || 'ftsr ixym htyf dtbm',
+                },
+            });
+            const loginTime = new Date().toLocaleString();
+            const mailOptions = {
+                from: `Sajilo Sahayog <${process.env.EMAIL_USER || 'sajilosahayog@gmail.com'}>`,
+                to: email,
+                subject: 'Login Notification - Sajilo Sahayog',
+                text: `Dear ${user.full_name || user.username},\n\nYour account was just logged in at ${loginTime}.\n\nIf this wasn't you, please reset your password or contact support immediately.\n\nThank you for using Sajilo Sahayog!`,
+                html: `<p>Dear <b>${user.full_name || user.username}</b>,</p><p>Your account was just logged in at <b>${loginTime}</b>.</p><p>If this wasn't you, please <a href='#'>reset your password</a> or contact support immediately.</p><p>Thank you for using <b>Sajilo Sahayog</b>!</p>`
+            };
+            await transporter.sendMail(mailOptions);
+            console.log('Login notification email sent to:', email);
+        } catch (emailError) {
+            console.error('Error sending login notification email:', emailError);
+        }
 
         // Generate JWT token with admin status
         const token = jwt.sign(

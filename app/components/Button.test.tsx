@@ -5,8 +5,8 @@ import Button from './Button';
 describe('Button', () => {
   it('calls onPress when pressed', () => {
     const onPressMock = jest.fn();
-    const { getByText } = render(<Button title="Click me" onPress={onPressMock} />);
-    fireEvent.press(getByText('Click me'));
+    const { getByTestId } = render(<Button title="Click me" onPress={onPressMock} />);
+    fireEvent.press(getByTestId('button-touchable'));
     expect(onPressMock).toHaveBeenCalled();
   });
 }); 

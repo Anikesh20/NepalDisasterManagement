@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  StyleSheet,
-  Text,
-  View,
+    Alert,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import DataTable from '../components/admin/DataTable';
-import adminService from '../services/adminService';
+import { getAllReports, rejectReport, verifyReport } from '../services/adminService';
 import { getDisasterIcon } from '../services/disasterService';
 import { DisasterReport, getReportStatusColor, getReportStatusText } from '../services/reportService';
 import { colors } from '../styles/theme';
@@ -17,6 +17,7 @@ export default function ReportsManagement() {
   const [reports, setReports] = useState<DisasterReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   // Ensure landscape orientation
   useAdminOrientation();
@@ -27,7 +28,7 @@ export default function ReportsManagement() {
 
   const loadReports = async () => {
     try {
-      const data = await adminService.getAllReports();
+      const data = await getAllReports();
       setReports(data);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -61,13 +62,19 @@ export default function ReportsManagement() {
         },
         {
           text: 'Verify',
-          onPress: () => {
-            // In a real app, this would call an API to update the report status
-            const updatedReports = reports.map(r => 
-              r.id === report.id ? { ...r, status: 'verified' as const } : r
-            );
-            setReports(updatedReports);
-            Alert.alert('Success', 'Report has been verified');
+          onPress: async () => {
+            setStatusLoading(true);
+            try {
+              await verifyReport(report.id);
+              // Reload reports to get updated data
+              await loadReports();
+              Alert.alert('Success', 'Report has been verified');
+            } catch (error: any) {
+              console.error('Error verifying report:', error);
+              Alert.alert('Error', error.message || 'Failed to verify report');
+            } finally {
+              setStatusLoading(false);
+            }
           },
         },
       ]
@@ -85,13 +92,19 @@ export default function ReportsManagement() {
         },
         {
           text: 'Reject',
-          onPress: () => {
-            // In a real app, this would call an API to update the report status
-            const updatedReports = reports.map(r => 
-              r.id === report.id ? { ...r, status: 'rejected' as const } : r
-            );
-            setReports(updatedReports);
-            Alert.alert('Success', 'Report has been rejected');
+          onPress: async () => {
+            setStatusLoading(true);
+            try {
+              await rejectReport(report.id);
+              // Reload reports to get updated data
+              await loadReports();
+              Alert.alert('Success', 'Report has been rejected');
+            } catch (error: any) {
+              console.error('Error rejecting report:', error);
+              Alert.alert('Error', error.message || 'Failed to reject report');
+            } finally {
+              setStatusLoading(false);
+            }
           },
         },
       ]

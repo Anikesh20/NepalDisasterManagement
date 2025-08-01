@@ -153,7 +153,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
     return (
       <View style={[styles.container, { backgroundColor: '#fff' }]}>
         <Text style={{ color: '#000', fontSize: 16, marginBottom: 12 }}>Failed to connect to backend.</Text>
-        <Text style={{ color: '#000', fontSize: 14 }}>{initError.message}</Text>
+        <Text style={{ color: '#000', fontSize: 14 }}>
+          {typeof initError.message === 'string' ? initError.message : 'Unknown error occurred'}
+        </Text>
       </View>
     );
   }

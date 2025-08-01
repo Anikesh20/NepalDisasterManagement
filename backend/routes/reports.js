@@ -5,6 +5,9 @@ const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const createReportPDF = require('../scripts/createReportPDF');
+const sendReportEmail = require('../scripts/sendReportEmail');
+const fetch = require('node-fetch'); 
 
 // Configure multer for image upload
 const storage = multer.diskStorage({
@@ -59,8 +62,8 @@ router.post('/', authenticateToken, upload.array('images', 5), async (req, res) 
             longitude
         } = req.body;
 
-        // Validate required fields
-        if (!type || !title || !location || !district || !description || !severity) {
+        // Validate required fields (removed location since it's no longer in the form)
+        if (!type || !title || !district || !description || !severity) {
             throw new Error('Missing required fields');
         }
 
@@ -90,6 +93,37 @@ router.post('/', authenticateToken, upload.array('images', 5), async (req, res) 
             ]
         );
         console.log('Report inserted successfully');
+
+        // Generate PDF and send email to admin
+        try {
+            const reportData = result.rows[0];
+            // Send push notification to the reporting user
+            const userResult = await db.query('SELECT expo_push_token FROM users WHERE id = $1', [req.user.userId]);
+            const expoPushToken = userResult.rows[0]?.expo_push_token;
+            if (expoPushToken) {
+                await fetch('https://exp.host/--/api/v2/push/send', {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Accept-encoding': 'gzip, deflate',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        to: expoPushToken,
+                        sound: 'default',
+                        title: 'Disaster Reported',
+                        body: 'Help is on the way please stay calm till rescue arrives',
+                        data: { reportId: reportData.id },
+                    }),
+                });
+            }
+            // Existing email logic
+            const pdfBuffer = await createReportPDF(reportData);
+            await sendReportEmail(pdfBuffer, reportData);
+            console.log('Admin notified with PDF report');
+        } catch (emailErr) {
+            console.error('Failed to send admin email or push notification:', emailErr);
+        }
 
         await client.query('COMMIT');
         console.log('Transaction committed');
@@ -207,6 +241,18 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
         await client.query('BEGIN');
 
+        // Get the report details first to get the reporter's user ID
+        const reportResult = await client.query(
+            'SELECT * FROM disaster_reports WHERE id = $1',
+            [id]
+        );
+
+        if (reportResult.rows.length === 0) {
+            throw new Error('Report not found');
+        }
+
+        const report = reportResult.rows[0];
+
         const result = await client.query(
             `UPDATE disaster_reports 
              SET status = $1, 
@@ -217,8 +263,42 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
             [status, req.user.userId, id]
         );
 
-        if (result.rows.length === 0) {
-            throw new Error('Report not found');
+        // Send push notification if report is verified
+        if (status === 'verified') {
+            try {
+                // Get the reporter's Expo push token
+                const userResult = await client.query(
+                    'SELECT expo_push_token FROM users WHERE id = $1',
+                    [report.reported_by]
+                );
+                
+                const expoPushToken = userResult.rows[0]?.expo_push_token;
+                if (expoPushToken) {
+                    await fetch('https://exp.host/--/api/v2/push/send', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Accept-encoding': 'gzip, deflate',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            to: expoPushToken,
+                            sound: 'default',
+                            title: 'Report Verified',
+                            body: 'Your report is verified and help is on the way',
+                            data: { 
+                                reportId: report.id,
+                                status: 'verified',
+                                type: 'report_verification'
+                            },
+                        }),
+                    });
+                    console.log('Push notification sent to user for report verification');
+                }
+            } catch (notificationError) {
+                console.error('Failed to send push notification for report verification:', notificationError);
+                // Don't fail the entire request if notification fails
+            }
         }
 
         await client.query('COMMIT');

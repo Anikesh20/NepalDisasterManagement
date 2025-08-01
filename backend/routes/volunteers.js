@@ -23,4 +23,28 @@ router.put('/:userId', authenticateToken, async (req, res) => {
   }
 });
 
+// Get volunteer profile for a user
+router.get('/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const authHeader = req.headers['authorization'];
+    console.log('Token received by backend:', authHeader);
+    console.log('Decoded user from token:', req.user);
+    const result = await db.query(
+      'SELECT * FROM volunteers WHERE user_id = $1',
+      [userId]
+    );
+    console.log('DB query result:', result.rows);
+    if (result.rows.length === 0) {
+      console.log('Volunteer profile not found for user_id:', userId);
+      return res.status(404).json({ error: 'Volunteer profile not found' });
+    }
+    console.log('Volunteer profile fetched:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching volunteer profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router; 

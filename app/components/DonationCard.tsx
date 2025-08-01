@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStripe } from '@stripe/stripe-react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import paymentService from '../services/paymentService';
+import { API_URL } from '../config';
 import { colors, shadows } from '../styles/theme';
 
 interface DonationCardProps {
@@ -16,6 +17,9 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
   const [customAmount, setCustomAmount] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [paymentId, setPaymentId] = useState<string | null>(null);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const predefinedAmounts = [100, 500, 1000, 5000];
@@ -43,47 +47,56 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
 
       setIsProcessing(true);
 
-      // Create payment intent
-      const { clientSecret, paymentIntentId } = await paymentService.createPaymentIntent(amount);
+      // Get JWT token
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Not Authenticated', 'You must be logged in to donate.');
+        setIsProcessing(false);
+        return;
+      }
 
-      // Initialize payment sheet
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'Nepal Disaster Management',
-        style: 'automatic',
-        defaultBillingDetails: {
-          name: 'Donation',
+      // Initiate payment and send OTP
+      const response = await fetch(`${API_URL}/api/payments/initiate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify({ amount, payment_method: 'card' }),
       });
-
-      if (initError) {
-        throw new Error(initError.message);
-      }
-
-      // Present payment sheet
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        throw new Error(presentError.message);
-      }
-
-      // Confirm payment
-      const { success, paymentIntent } = await paymentService.confirmPayment(paymentIntentId);
-
-      if (success && paymentIntent.status === 'succeeded') {
-        onDonate(amount, paymentIntent.id);
-        setSelectedAmount(null);
-        setCustomAmount('');
-        setExpanded(false);
-      } else {
-        throw new Error('Payment was not successful');
-      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to initiate payment');
+      setOtpSent(true);
+      setPaymentId(data.paymentId);
+      Alert.alert('OTP Sent', 'Please check your email for the OTP to complete your payment.');
     } catch (error) {
       console.error('Payment error:', error);
-      Alert.alert(
-        'Payment Failed',
-        error instanceof Error ? error.message : 'An error occurred while processing your payment. Please try again.'
-      );
+      Alert.alert('Payment Failed', error instanceof Error ? error.message : 'An error occurred while processing your payment. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    try {
+      setIsProcessing(true);
+      const response = await fetch(`${API_URL}/api/payments/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId, otp }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to verify OTP');
+      Alert.alert('Payment Success', 'Your payment was successful and a receipt has been sent to your email.');
+      setOtpSent(false);
+      setOtp('');
+      setPaymentId(null);
+      setSelectedAmount(null);
+      setCustomAmount('');
+      setExpanded(false);
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      Alert.alert('OTP Verification Failed', error instanceof Error ? error.message : 'Failed to verify OTP. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -95,7 +108,7 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="donation-card">
       <TouchableOpacity 
         style={styles.header} 
         onPress={toggleExpand}
@@ -166,28 +179,62 @@ const DonationCard: React.FC<DonationCardProps> = ({ onDonate }) => {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[
-              styles.donateButton,
-              (!selectedAmount && !customAmount) && styles.disabledButton,
-              isProcessing && styles.processingButton
-            ]}
-            onPress={handleDonate}
-            disabled={(!selectedAmount && !customAmount) || isProcessing}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={['#FF5A5F', '#FF8A8F']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.donateButtonGradient}
+          {!otpSent ? (
+            <TouchableOpacity
+              testID="donate-button"
+              style={[
+                styles.donateButton,
+                (!selectedAmount && !customAmount) && styles.disabledButton,
+                isProcessing && styles.processingButton
+              ]}
+              onPress={handleDonate}
+              disabled={(!selectedAmount && !customAmount) || isProcessing}
+              activeOpacity={0.7}
             >
-              <Text style={styles.donateButtonText}>
-                {isProcessing ? 'Processing...' : 'Donate Now'}
-              </Text>
-              {!isProcessing && <Ionicons name="arrow-forward" size={18} color="#fff" />}
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={['#FF5A5F', '#FF8A8F']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.donateButtonGradient}
+              >
+                <Text style={styles.donateButtonText}>
+                  {isProcessing ? 'Processing...' : 'Donate Now'}
+                </Text>
+                {!isProcessing && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ fontSize: 16, marginBottom: 8 }}>Enter OTP sent to your email:</Text>
+              <TextInput
+                style={[styles.customAmountInput, { letterSpacing: 8, textAlign: 'center', fontSize: 18 }]}
+                value={otp}
+                onChangeText={setOtp}
+                placeholder="Enter OTP"
+                keyboardType="number-pad"
+                editable={!isProcessing}
+                maxLength={6}
+              />
+              <TouchableOpacity
+                style={[styles.donateButton, isProcessing && styles.processingButton]}
+                onPress={handleVerifyOtp}
+                disabled={isProcessing || otp.length !== 6}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={['#36D1C4', '#1FA2FF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.donateButtonGradient}
+                >
+                  <Text style={styles.donateButtonText}>
+                    {isProcessing ? 'Verifying...' : 'Verify OTP & Pay'}
+                  </Text>
+                  {!isProcessing && <Ionicons name="checkmark" size={18} color="#fff" />}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -208,16 +255,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minWidth: 0,
+    maxWidth: 260,
+    alignSelf: 'flex-start',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
@@ -226,15 +277,15 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   headerTextContainer: {
-    marginLeft: 16,
+    marginLeft: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: colors.text,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textLight,
     marginTop: 2,
   },
